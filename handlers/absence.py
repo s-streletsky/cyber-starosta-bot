@@ -42,14 +42,24 @@ from services.absence import (
     format_dates_short,
     format_delete_confirm,
     format_delete_result,
+    format_limit_partial,
+    format_limit_reached,
     is_deletable_day,
     is_valid_reason,
+    is_within_attempt_limit,
     reason_display,
     validate_reason_text,
 )
 from services.members import can_mark_absence
 from services.members import is_admin as is_env_admin
-from storage import ABSENCE_DELETED, ABSENCE_IDENTICAL, ABSENCE_REPLACED, Storage
+from storage import (
+    ABSENCE_CREATED,
+    ABSENCE_DELETED,
+    ABSENCE_IDENTICAL,
+    ABSENCE_LIMIT,
+    ABSENCE_REPLACED,
+    Storage,
+)
 
 router = Router()
 
@@ -148,8 +158,26 @@ async def _confirm_step_view(
         )
         return text, back_keyboard()
 
+    # The all-identical branch above took priority; here we flag dates whose
+    # lifetime mutation limit is already exhausted. Env admins have no limit,
+    # so the gate is skipped for them.
+    at_limit: list[date] = []
+    if not is_env_admin(user_id):
+        at_limit = [
+            day
+            for day in dates
+            if not is_within_attempt_limit(
+                await storage.count_day_attempts(user_id, day.isoformat())
+            )
+        ]
+        if len(at_limit) == len(dates):
+            return format_limit_reached(at_limit), back_keyboard()
+
     summary = format_confirm(dates, reason_code, reason_text, existing)
-    return f"{summary}\n{texts.CONFIRM_QUESTION}", confirm_keyboard(ABSENCE_REPLACED in statuses)
+    text = f"{summary}\n{texts.CONFIRM_QUESTION}"
+    if at_limit:
+        text = f"{text}\n{format_limit_partial(at_limit)}"
+    return text, confirm_keyboard(ABSENCE_REPLACED in statuses)
 
 
 async def _render(callback: CallbackQuery, view: tuple[str, InlineKeyboardMarkup]) -> None:
@@ -326,11 +354,36 @@ async def confirm_send(
         return
 
     reason_text = data.get("reason_text")
-    await storage.upsert_absences_batch(
-        user_id, [day.isoformat() for day in dates], reason_code, reason_text
+    results = await storage.upsert_absences_batch(
+        user_id,
+        [day.isoformat() for day in dates],
+        reason_code,
+        reason_text,
+        enforce_limit=not is_env_admin(user_id),
     )
 
-    success = build_success_text(dates, reason_display(reason_code, reason_text))
+    applied = [
+        day for day, result in zip(dates, results) if result in (ABSENCE_CREATED, ABSENCE_REPLACED)
+    ]
+    blocked = [day for day, result in zip(dates, results) if result == ABSENCE_LIMIT]
+
+    if applied:
+        success = build_success_text(applied, reason_display(reason_code, reason_text))
+        if blocked:
+            success = f"{success}\n{format_limit_partial(blocked)}"
+    elif blocked and len(blocked) == len(dates):
+        # Every selected date was rejected by the limit.
+        await callback.answer(format_limit_reached(blocked), show_alert=True)
+        await state.clear()
+        return
+    else:
+        # Nothing written: the non-blocked dates were identical no-ops. Report
+        # only those as marked, so a limit-blocked date is never claimed as done.
+        marked = [day for day in dates if day not in blocked]
+        success = build_success_text(marked, reason_display(reason_code, reason_text))
+        if blocked:
+            success = f"{success}\n{format_limit_partial(blocked)}"
+
     keyboard = await menu_for(storage, user_id, is_env_admin(user_id))
     if callback.message is not None and hasattr(callback.message, "answer"):
         await callback.message.answer(success, reply_markup=keyboard)
@@ -433,12 +486,30 @@ async def confirm_delete(
         return
 
     results = await storage.delete_absences_batch(
-        user_id, [day.isoformat() for day in selected]
+        user_id,
+        [day.isoformat() for day in selected],
+        enforce_limit=not is_env_admin(user_id),
     )
     deleted = [day for day, result in zip(selected, results) if result == ABSENCE_DELETED]
+    blocked = [day for day, result in zip(selected, results) if result == ABSENCE_LIMIT]
+
+    if deleted:
+        text = format_delete_result(deleted)
+        if blocked:
+            text = f"{text}\n{format_limit_partial(blocked)}"
+    elif blocked and len(blocked) == len(selected):
+        # Every selected record was rejected by the limit.
+        await callback.answer(format_limit_reached(blocked), show_alert=True)
+        await state.clear()
+        return
+    else:
+        # Nothing deleted and nothing blocked: all selected records are already
+        # gone (ABSENCE_IDENTICAL) — keep the existing "nothing to delete" notice.
+        text = format_delete_result(deleted)
+
     keyboard = await menu_for(storage, user_id, is_env_admin(user_id))
     if callback.message is not None and hasattr(callback.message, "answer"):
-        await callback.message.answer(format_delete_result(deleted), reply_markup=keyboard)
+        await callback.message.answer(text, reply_markup=keyboard)
     await callback.answer()
     await state.clear()
 

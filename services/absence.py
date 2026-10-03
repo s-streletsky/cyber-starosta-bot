@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 
 import texts
 from storage import (
+    ABSENCE_ATTEMPT_LIMIT,
     ABSENCE_CREATED,
     ABSENCE_IDENTICAL,
     ABSENCE_REPLACED,
@@ -191,6 +192,28 @@ def format_delete_result(deleted: list[date]) -> str:
     if not deleted:
         return texts.DELETE_NOTHING
     return texts.DELETE_SUCCESS.format(dates=format_dates_short(sorted(deleted)))
+
+
+# --- per-date mutation attempt limit ---
+
+
+def is_within_attempt_limit(used: int) -> bool:
+    """Whether one more mutation is allowed for a date with `used` attempts."""
+    return used < ABSENCE_ATTEMPT_LIMIT
+
+
+def format_limit_reached(dates: list[date]) -> str:
+    """Notice when every selected date has exhausted its mutation limit."""
+    return texts.LIMIT_REACHED.format(
+        limit=ABSENCE_ATTEMPT_LIMIT, dates=format_dates_short(sorted(dates))
+    )
+
+
+def format_limit_partial(blocked: list[date]) -> str:
+    """Notice when only some selected dates have exhausted their mutation limit."""
+    return texts.LIMIT_REACHED_PARTIAL.format(
+        limit=ABSENCE_ATTEMPT_LIMIT, dates=format_dates_short(sorted(blocked))
+    )
 
 
 # --- reports (selections) ---

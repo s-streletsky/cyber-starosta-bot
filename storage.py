@@ -15,7 +15,7 @@ from typing import Any, Literal
 
 logger = logging.getLogger(__name__)
 
-AbsentStatus = Literal["created", "replaced", "identical", "deleted"]
+AbsentStatus = Literal["created", "replaced", "identical", "deleted", "limit"]
 MemberStatus = Literal["created", "updated"]
 MemberState = Literal["approved", "pending", "removed"]
 PendingResult = Literal["approved", "rejected", "not_pending", "missing"]
@@ -41,6 +41,11 @@ ABSENCE_CREATED: AbsentStatus = "created"
 ABSENCE_REPLACED: AbsentStatus = "replaced"
 ABSENCE_IDENTICAL: AbsentStatus = "identical"
 ABSENCE_DELETED: AbsentStatus = "deleted"
+ABSENCE_LIMIT: AbsentStatus = "limit"
+
+# Lifetime per-date mutation cap (ADD/REPLACE/DELETE): the counter is derived
+# from the append-only journal, so old lines count and no extra file is needed.
+ABSENCE_ATTEMPT_LIMIT = 10
 
 # JSON dictionary files can be missing (normal first run), valid, or corrupt.
 READ_MISSING: ReadState = "missing"
@@ -111,6 +116,7 @@ class Storage:
         self.members_path = self.data_dir / "members.json"
         self._lock = asyncio.Lock()
         self._index: dict[tuple[int, str], dict[str, Any]] = {}
+        self._attempts: dict[tuple[int, str], int] = {}
         self._load_absences()
 
     # ---------- reading ----------
@@ -139,14 +145,20 @@ class Storage:
         return record
 
     def _load_absences(self) -> None:
-        """Preloads the index; the last line for a key overwrites previous ones."""
+        """Preloads the index; the last line for a key overwrites previous ones.
+
+        Every parsed line also counts as one mutation attempt for its key —
+        the counter is rebuilt from the whole journal on load (old lines count).
+        """
         if not self.absences_path.exists():
             return
         with self.absences_path.open(encoding="utf-8") as file:
             for line in file:
                 record = self._parse_line(line)
                 if record is not None:
-                    self._index[(record["user_id"], record["date"])] = record
+                    key = (record["user_id"], record["date"])
+                    self._index[key] = record
+                    self._attempts[key] = self._attempts.get(key, 0) + 1
 
     async def get_record(self, user_id: int, date: str) -> dict[str, Any] | None:
         """Last active record for a key or None (missing, or logically deleted)."""
@@ -167,6 +179,14 @@ class Storage:
             if record_date == date and not is_deleted(record)
         ]
 
+    async def count_day_attempts(self, user_id: int, date: str) -> int:
+        """Lifetime mutation attempts for one (user_id, date).
+
+        Reads the in-memory counter only: no await points, no file I/O
+        (mirrors the lock-free read invariant of get_record).
+        """
+        return self._attempts.get((user_id, date), 0)
+
     # ---------- absence writes ----------
 
     async def upsert_absences_batch(
@@ -175,12 +195,17 @@ class Storage:
         dates: list[str],
         reason: str,
         reason_text: str | None,
+        enforce_limit: bool = True,
     ) -> list[AbsentStatus]:
         """Batch upsert absence records for a single lock acquisition.
 
         Appends all date records under a single lock acquisition. Each record is
         fsync'd individually, so a crash mid-batch may leave a partial journal —
         which is a valid state for an append-only log (last write wins per key).
+
+        With enforce_limit, a key that already reached ABSENCE_ATTEMPT_LIMIT is
+        skipped with ABSENCE_LIMIT (identical re-marks are checked first and
+        consume nothing). Handlers pass enforce_limit=False for env admins.
         """
         async with self._lock:
             results: list[AbsentStatus] = []
@@ -192,6 +217,9 @@ class Storage:
                 if is_identical_absence(existing, reason, reason_text):
                     results.append(ABSENCE_IDENTICAL)
                     continue
+                if enforce_limit and self._attempts.get(key, 0) >= ABSENCE_ATTEMPT_LIMIT:
+                    results.append(ABSENCE_LIMIT)
+                    continue
 
                 record: dict[str, Any] = {
                     "user_id": user_id,
@@ -202,15 +230,22 @@ class Storage:
                 }
                 self._append_line(record)
                 self._index[key] = record
+                self._attempts[key] = self._attempts.get(key, 0) + 1
                 results.append(ABSENCE_CREATED if existing is None else ABSENCE_REPLACED)
             return results
 
-    async def delete_absences_batch(self, user_id: int, dates: list[str]) -> list[AbsentStatus]:
+    async def delete_absences_batch(
+        self, user_id: int, dates: list[str], enforce_limit: bool = True
+    ) -> list[AbsentStatus]:
         """Logical delete: append a tombstone per active record.
 
         A missing or already-deleted key is a no-op and reports ABSENCE_IDENTICAL,
         so repeated deletion is idempotent. Mirrors upsert_absences_batch: one lock
         acquisition, fsync per appended line, no await inside the critical section.
+
+        With enforce_limit, an active key that already reached ABSENCE_ATTEMPT_LIMIT
+        is skipped with ABSENCE_LIMIT (deletion consumes one attempt). Handlers pass
+        enforce_limit=False for env admins.
         """
         async with self._lock:
             results: list[AbsentStatus] = []
@@ -219,6 +254,9 @@ class Storage:
                 existing = self._index.get(key)
                 if existing is None or is_deleted(existing):
                     results.append(ABSENCE_IDENTICAL)
+                    continue
+                if enforce_limit and self._attempts.get(key, 0) >= ABSENCE_ATTEMPT_LIMIT:
+                    results.append(ABSENCE_LIMIT)
                     continue
 
                 tombstone: dict[str, Any] = {
@@ -229,6 +267,7 @@ class Storage:
                 }
                 self._append_line(tombstone)
                 self._index[key] = tombstone
+                self._attempts[key] = self._attempts.get(key, 0) + 1
                 results.append(ABSENCE_DELETED)
             return results
 

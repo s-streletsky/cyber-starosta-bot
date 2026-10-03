@@ -16,7 +16,7 @@ from handlers.absence import (
     toggle_delete_day,
 )
 from services.absence import build_days
-from storage import MEMBER_APPROVED, Storage
+from storage import ABSENCE_ATTEMPT_LIMIT, MEMBER_APPROVED, Storage
 from tests.fakes import _FakeCallback, _FakeMessage, _FakeState
 
 TODAY = date(2026, 10, 3)
@@ -229,3 +229,46 @@ async def test_confirm_delete_is_idempotent_when_record_already_gone(tmp_path, m
     await confirm_delete(callback, state, storage)
 
     assert any(text == texts.DELETE_NOTHING for text, _ in callback.message.answers)
+
+
+async def test_confirm_delete_at_limit_alerts_and_keeps_record(tmp_path, monkeypatch):
+    _fix_window(monkeypatch)
+    storage = Storage(tmp_path)
+    await storage.upsert_member(111, "Студент Тестовий", "student", status=MEMBER_APPROVED)
+    for index in range(ABSENCE_ATTEMPT_LIMIT):
+        await storage.upsert_absences_batch(111, ["2026-10-03"], "illness", f"text-{index}")
+
+    callback = _FakeCallback(111)
+    state = _FakeState({"days": {"2026-10-03": True}})
+
+    await confirm_delete(callback, state, storage)
+
+    assert state.cleared
+    expected = texts.LIMIT_REACHED.format(limit=ABSENCE_ATTEMPT_LIMIT, dates="03.10")
+    assert any(
+        args and args[0] == expected and kwargs.get("show_alert") is True
+        for args, kwargs in callback.answers
+    )
+    assert callback.message.answers == []
+    assert await storage.get_record(111, "2026-10-03") is not None
+
+
+async def test_confirm_delete_mixed_limit_and_missing_has_no_false_alert(tmp_path, monkeypatch):
+    """Defect A: one date at the cap plus one already-gone date must not alert."""
+    _fix_window(monkeypatch)
+    storage = Storage(tmp_path)
+    await storage.upsert_member(111, "Студент Тестовий", "student", status=MEMBER_APPROVED)
+    blocked_day = "2026-10-03"
+    missing_day = "2026-10-04"
+    for index in range(ABSENCE_ATTEMPT_LIMIT):
+        await storage.upsert_absences_batch(111, [blocked_day], "illness", f"seed-{index}")
+
+    callback = _FakeCallback(111)
+    state = _FakeState({"days": {blocked_day: True, missing_day: True}})
+
+    await confirm_delete(callback, state, storage)
+
+    assert not any(kwargs.get("show_alert") for _, kwargs in callback.answers)
+    assert all(texts.LIMIT_REACHED not in text for text, _ in callback.message.answers)
+    assert any(text == texts.DELETE_NOTHING for text, _ in callback.message.answers)
+    assert await storage.get_record(111, blocked_day) is not None

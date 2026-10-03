@@ -23,7 +23,7 @@ from handlers.pending import router as pending_router
 from handlers.report import router as report_router
 from handlers.start import router as start_router
 from services.absence import build_days
-from storage import MEMBER_APPROVED, Storage, StorageCorruptError
+from storage import ABSENCE_ATTEMPT_LIMIT, MEMBER_APPROVED, Storage, StorageCorruptError
 from tests.fakes import ADMIN_ID
 
 
@@ -264,3 +264,28 @@ async def test_delete_button_works_from_other_text_state(dp, tmp_path, monkeypat
 
     assert any(text == texts.DELETE_PROMPT.format(count=0) for _, text in session.sent_messages)
     assert await storage.get_record(111, "2026-10-03") is not None
+
+
+async def test_absence_limit_reached_via_dispatcher(dp, tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "handlers.absence.build_days", lambda tz: build_days(TZ, today=date(2026, 10, 3))
+    )
+    session = _FakeSession()
+    storage = Storage(tmp_path)
+    await storage.upsert_member(111, "Студент Тестовий", "student", status=MEMBER_APPROVED)
+    for index in range(ABSENCE_ATTEMPT_LIMIT):
+        await storage.upsert_absences_batch(111, ["2026-10-03"], "illness", f"seed-{index}")
+    path = tmp_path / "absences.jsonl"
+    lines_before = len(path.read_text(encoding="utf-8").splitlines())
+    bot = _make_bot(dp, storage, session)
+
+    await dp.feed_update(bot, _message_update(1, texts.MENU_ABSENCE, _user(111)))
+    await dp.feed_update(bot, _callback_update(2, "d:2026-10-03", _user(111)))
+    await dp.feed_update(bot, _callback_update(3, "dc:next", _user(111)))
+    await dp.feed_update(bot, _callback_update(4, "r:family", _user(111)))
+    await dp.feed_update(bot, _callback_update(5, "c:send", _user(111)))
+
+    expected = texts.LIMIT_REACHED.format(limit=ABSENCE_ATTEMPT_LIMIT, dates="03.10")
+    assert (expected, True) in session.answered_callbacks
+    lines_after = len(path.read_text(encoding="utf-8").splitlines())
+    assert lines_after == lines_before

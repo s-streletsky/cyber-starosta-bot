@@ -20,8 +20,14 @@ from handlers.absence import (
     toggle_day,
 )
 from services.absence import REASON_TEXT_MAX, build_days
-from storage import MEMBER_APPROVED, Storage
-from tests.fakes import _FakeCallback, _FakeMessage, _FakeState, _reply_button_texts
+from storage import ABSENCE_ATTEMPT_LIMIT, ABSENCE_CREATED, MEMBER_APPROVED, Storage
+from tests.fakes import (
+    _FakeCallback,
+    _FakeMessage,
+    _FakeState,
+    _inline_button_texts,
+    _reply_button_texts,
+)
 
 
 @pytest.mark.parametrize(
@@ -317,6 +323,167 @@ async def test_confirm_back(tmp_path):
     assert len(callback.message.edits) == 1
     edit_text = callback.message.edits[0][0]
     assert texts.DAY_PROMPT.split("{")[0] in edit_text
+
+
+# --- per-date mutation attempt limit ---
+
+
+async def test_confirm_send_all_blocked_alerts_limit_and_writes_nothing(tmp_path, monkeypatch):
+    storage = Storage(tmp_path)
+    await storage.upsert_member(111, "Студент Тестовий", "student", status=MEMBER_APPROVED)
+    fixed_days = build_days(TZ, today=date(2026, 10, 1))
+    monkeypatch.setattr("handlers.absence.build_days", lambda tz: fixed_days)
+    blocked_day = fixed_days[0]["day"].isoformat()
+    for index in range(ABSENCE_ATTEMPT_LIMIT):
+        await storage.upsert_absences_batch(111, [blocked_day], "illness", f"text-{index}")
+    lines_before = (tmp_path / "absences.jsonl").read_text(encoding="utf-8").splitlines()
+
+    callback = _FakeCallback(111)
+    state = _FakeState(
+        {"days": {blocked_day: True}, "reason_code": "family", "reason_text": None}
+    )
+
+    await confirm_send(callback, state, storage)
+
+    assert state.cleared
+    expected = texts.LIMIT_REACHED.format(limit=ABSENCE_ATTEMPT_LIMIT, dates="01.10")
+    assert any(
+        args and args[0] == expected and kwargs.get("show_alert") is True
+        for args, kwargs in callback.answers
+    )
+    assert callback.message.answers == []
+    lines_after = (tmp_path / "absences.jsonl").read_text(encoding="utf-8").splitlines()
+    assert lines_after == lines_before
+
+
+async def test_confirm_send_partial_reports_allowed_and_blocked(tmp_path, monkeypatch):
+    storage = Storage(tmp_path)
+    await storage.upsert_member(111, "Студент Тестовий", "student", status=MEMBER_APPROVED)
+    fixed_days = build_days(TZ, today=date(2026, 10, 1))
+    monkeypatch.setattr("handlers.absence.build_days", lambda tz: fixed_days)
+    blocked_day = fixed_days[0]["day"].isoformat()
+    free_day = fixed_days[1]["day"].isoformat()
+    for index in range(ABSENCE_ATTEMPT_LIMIT):
+        await storage.upsert_absences_batch(111, [blocked_day], "illness", f"text-{index}")
+
+    callback = _FakeCallback(111)
+    state = _FakeState(
+        {
+            "days": {blocked_day: True, free_day: True},
+            "reason_code": "family",
+            "reason_text": None,
+        }
+    )
+
+    await confirm_send(callback, state, storage)
+
+    success = texts.SUCCESS.format(dates="02.10", reason="сімейні обставини")
+    partial = texts.LIMIT_REACHED_PARTIAL.format(limit=ABSENCE_ATTEMPT_LIMIT, dates="01.10")
+    assert any(text.startswith(success) and partial in text for text, _ in callback.message.answers)
+    assert await storage.get_record(111, free_day) is not None
+    assert await storage.get_record(111, blocked_day) is not None
+
+
+async def test_confirm_send_mixed_limit_and_identical_has_no_false_alert(tmp_path, monkeypatch):
+    """Defect A: one date at the cap plus one identical no-op must not alert."""
+    storage = Storage(tmp_path)
+    await storage.upsert_member(111, "Студент Тестовий", "student", status=MEMBER_APPROVED)
+    fixed_days = build_days(TZ, today=date(2026, 10, 1))
+    monkeypatch.setattr("handlers.absence.build_days", lambda tz: fixed_days)
+    blocked_day = fixed_days[0]["day"].isoformat()
+    identical_day = fixed_days[1]["day"].isoformat()
+    for index in range(ABSENCE_ATTEMPT_LIMIT):
+        await storage.upsert_absences_batch(111, [blocked_day], "family", f"seed-{index}")
+    await storage.upsert_absences_batch(111, [identical_day], "illness", None)
+
+    callback = _FakeCallback(111)
+    state = _FakeState(
+        {
+            "days": {blocked_day: True, identical_day: True},
+            "reason_code": "illness",
+            "reason_text": None,
+        }
+    )
+
+    await confirm_send(callback, state, storage)
+
+    assert not any(kwargs.get("show_alert") for _, kwargs in callback.answers)
+    assert callback.message.answers, "the normal no-op result is still sent"
+    text = callback.message.answers[0][0]
+    # The identical date is reported as marked; the blocked date is not.
+    success = texts.SUCCESS.format(dates="02.10", reason="хвороба")
+    assert success in text
+    # The blocked date must not be claimed as marked in the success message.
+    assert "Позначено: 01.10" not in text
+    # The blocked date is disclosed via the partial limit notice.
+    partial = texts.LIMIT_REACHED_PARTIAL.format(limit=ABSENCE_ATTEMPT_LIMIT, dates="01.10")
+    assert partial in text
+
+
+async def test_confirm_view_blocks_non_admin_at_limit(tmp_path, monkeypatch):
+    """Defect B (control): a non-admin at the cap still sees the gate."""
+    storage = Storage(tmp_path)
+    await storage.upsert_member(111, "Студент Тестовий", "student", status=MEMBER_APPROVED)
+    fixed_days = build_days(TZ, today=date(2026, 10, 1))
+    monkeypatch.setattr("handlers.absence.build_days", lambda tz: fixed_days)
+    day = fixed_days[0]["day"].isoformat()
+    for index in range(ABSENCE_ATTEMPT_LIMIT):
+        await storage.upsert_absences_batch(111, [day], "family", f"seed-{index}")
+
+    callback = _FakeCallback(111)
+    state = _FakeState({"days": {day: True}})
+
+    await choose_reason(callback, state, storage, ReasonCb(code="illness"))
+
+    text, markup = callback.message.edits[0]
+    assert texts.LIMIT_REACHED.format(limit=ABSENCE_ATTEMPT_LIMIT, dates="01.10") in text
+    assert texts.CONFIRM_QUESTION not in text
+    buttons = _inline_button_texts(markup)
+    assert texts.BUTTON_SEND not in buttons
+    assert texts.BUTTON_SEND_REPLACE not in buttons
+
+
+async def test_confirm_view_admin_at_limit_gets_normal_send(tmp_path, monkeypatch):
+    """Defect B: an env admin at the cap skips the gate and gets the send button."""
+    storage = Storage(tmp_path)
+    fixed_days = build_days(TZ, today=date(2026, 10, 1))
+    monkeypatch.setattr("handlers.absence.build_days", lambda tz: fixed_days)
+    day = fixed_days[0]["day"].isoformat()
+    for index in range(ABSENCE_ATTEMPT_LIMIT):
+        await storage.upsert_absences_batch(999999999, [day], "family", f"seed-{index}")
+
+    callback = _FakeCallback(999999999)  # env admin from conftest
+    state = _FakeState({"days": {day: True}})
+
+    await choose_reason(callback, state, storage, ReasonCb(code="illness"))
+
+    text, markup = callback.message.edits[0]
+    assert texts.CONFIRM_QUESTION in text
+    assert texts.LIMIT_REACHED not in text
+    buttons = _inline_button_texts(markup)
+    assert texts.BUTTON_SEND in buttons or texts.BUTTON_SEND_REPLACE in buttons
+
+
+async def test_confirm_send_admin_bypasses_limit(tmp_path, monkeypatch):
+    storage = Storage(tmp_path)
+    fixed_days = build_days(TZ, today=date(2026, 10, 1))
+    monkeypatch.setattr("handlers.absence.build_days", lambda tz: fixed_days)
+    day = fixed_days[0]["day"].isoformat()
+
+    captured: dict[str, bool] = {}
+
+    async def fake_upsert(user_id, dates, reason, reason_text, enforce_limit=True):
+        captured["enforce_limit"] = enforce_limit
+        return [ABSENCE_CREATED for _ in dates]
+
+    monkeypatch.setattr(storage, "upsert_absences_batch", fake_upsert)
+
+    callback = _FakeCallback(999999999)  # env admin from conftest
+    state = _FakeState({"days": {day: True}, "reason_code": "illness", "reason_text": None})
+
+    await confirm_send(callback, state, storage)
+
+    assert captured["enforce_limit"] is False
 
 
 

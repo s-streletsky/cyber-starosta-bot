@@ -15,8 +15,11 @@ from services.absence import (
     format_confirm,
     format_delete_confirm,
     format_delete_result,
+    format_limit_partial,
+    format_limit_reached,
     is_deletable_day,
     is_valid_reason,
+    is_within_attempt_limit,
     reason_brief,
     reason_display,
     validate_reason_text,
@@ -203,6 +206,27 @@ def test_format_delete_result_sorts_mixed_order():
     text = format_delete_result([date(2026, 10, 4), date(2026, 10, 3)])
 
     assert text == "🗑 Видалено: 03.10, 04.10"
+
+
+# --- per-date mutation attempt limit ---
+
+
+def test_is_within_attempt_limit_boundary():
+    assert is_within_attempt_limit(9) is True
+    assert is_within_attempt_limit(10) is False
+
+
+def test_format_limit_messages_include_dates_and_limit():
+    reached = format_limit_reached([date(2026, 10, 4), date(2026, 10, 3)])
+
+    assert "10" in reached
+    assert "03.10" in reached
+    assert "04.10" in reached
+
+    partial = format_limit_partial([date(2026, 10, 3)])
+
+    assert "10" in partial
+    assert "03.10" in partial
 
 
 # --- reports (selections) ---

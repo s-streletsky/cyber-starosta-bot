@@ -18,6 +18,11 @@
   (`ABSENCE_DELETED`, `is_deleted`); a deleted key reads as absent (`get_record` →
   `None`) and is excluded from `list_absences_for_date`, so reports skip it.
   Re-marking a deleted key appends a fresh active record (`ABSENCE_CREATED`).
+  Per-date mutations are capped at `ABSENCE_ATTEMPT_LIMIT` (10) per
+  `(user_id, date)`, lifetime; the counter is journal-derived (rebuilt on load, no
+  new file), identical re-marks consume nothing, delete consumes one, and a blocked
+  mutation returns `ABSENCE_LIMIT`. Env admins bypass the cap via the
+  `enforce_limit` flag the handlers compute; `storage.py` never imports `config`.
 - Storage invariant: all mutations run under one `asyncio.Lock` with synchronous
   (no `await`) file I/O inside the critical section; reads (`get_record`,
   `list_absences_for_date`) are lock-free and rely on that invariant, returning

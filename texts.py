@@ -123,6 +123,10 @@ DELETE_SUCCESS = "🗑 Видалено: {dates}"
 DELETE_NOTHING = "Нічого видаляти — записів на ці дні немає"
 DELETE_PAST_REJECTED = "Минулі записи видалити не можна"
 
+# --- per-date mutation attempt limit ---
+LIMIT_REACHED = "🚫 Досягнуто ліміт змін ({limit}) для: {dates}"
+LIMIT_REACHED_PARTIAL = "🚫 Ліміт змін вичерпано для: {dates} (макс. {limit} на день)"
+
 
 def brand_greeting(user_id: int) -> str:
     """Greeting for /start with the brand name from config."""
