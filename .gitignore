@@ -1,0 +1,37 @@
+# --- secrets / environment ---
+.env
+
+# --- virtual environments ---
+venv/
+.venv/
+
+# --- local runtime data (never commit) ---
+data/
+
+# --- python artifacts ---
+__pycache__/
+
+# --- temp files ---
+*.tmp
+*.log
+
+# --- tool caches ---
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# --- coverage ---
+.coverage
+htmlcov/
+
+# --- build / packaging ---
+*.egg-info/
+dist/
+build/
+node_modules/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
