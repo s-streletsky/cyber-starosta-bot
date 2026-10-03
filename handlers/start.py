@@ -20,7 +20,7 @@ import texts
 from handlers.log_helpers import user_tag
 from handlers.pending import send_request_card
 from keyboards.menu import role_keyboard
-from services.members import can_view_reports, is_admin, validate_full_name
+from services.members import is_admin, validate_full_name
 from storage import MEMBER_APPROVED, MEMBER_PENDING, Storage
 
 logger = logging.getLogger(__name__)
@@ -95,16 +95,3 @@ async def receive_full_name(
     member = await storage.get_member(user.id) or {}
     await message.answer(texts.START_REQUEST_SENT)
     await send_request_card(message.bot, storage, user.id, member)
-
-
-@router.message(F.text == texts.MENU_REPORTS)
-async def reports_stub(message: Message, storage: Storage) -> None:
-    """Stub for future selections, limited to lead/supervisor/admin roles."""
-    user = message.from_user
-    if user is None:
-        return
-    member = await storage.get_member(user.id)
-    if not can_view_reports(member, is_admin=is_admin(user.id)):
-        await message.answer(texts.NOT_ALLOWED_REPORTS)
-        return
-    await message.answer(texts.REPORTS_STUB)

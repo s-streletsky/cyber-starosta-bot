@@ -150,3 +150,29 @@ async def test_member_missing_file_returns_none(tmp_path):
     storage = Storage(tmp_path)
 
     assert await storage.get_member(1) is None
+
+
+async def test_list_absences_for_date_filters_excludes_and_copies(tmp_path):
+    storage = Storage(tmp_path)
+    await storage.upsert_absences_batch(1, ["2026-10-03"], "illness", None)
+    await storage.upsert_absences_batch(2, ["2026-10-03"], "event", None)
+    await storage.upsert_absences_batch(3, ["2026-10-04"], "family", None)
+
+    records = await storage.list_absences_for_date("2026-10-03")
+    by_user = {user_id: record for user_id, record in records}
+
+    assert set(by_user) == {1, 2}
+    assert by_user[1]["reason"] == "illness"
+    assert by_user[2]["reason"] == "event"
+
+    # Mutating a returned record must not affect a later read.
+    by_user[1]["reason"] = "tampered"
+    reread = await storage.list_absences_for_date("2026-10-03")
+    again = {user_id: record for user_id, record in reread}
+    assert again[1]["reason"] == "illness"
+
+
+async def test_list_absences_for_date_empty(tmp_path):
+    storage = Storage(tmp_path)
+
+    assert await storage.list_absences_for_date("2026-10-03") == []

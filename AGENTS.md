@@ -15,8 +15,9 @@
 - `storage.py` — persistence: `<DATA_DIR>/absences.jsonl` (append-only journal) +
   `<DATA_DIR>/members.json` (atomic roster). No DB. All mutations under `asyncio.Lock`.
 - Storage invariant: all mutations run under one `asyncio.Lock` with synchronous
-  (no `await`) file I/O inside the critical section; reads are lock-free and rely
-  on that invariant. Do not introduce `await` points into `_write_members`/
+  (no `await`) file I/O inside the critical section; reads (`get_record`,
+  `list_absences_for_date`) are lock-free and rely on that invariant, returning
+  copies. Do not introduce `await` points into `_write_members`/
   `_append_line` or the read paths.
 - Head lead: an optional boolean `is_head_lead` on a roster entry marks the single
   main lead (recipient of request cards); exactly one or none. Read/set via
@@ -28,9 +29,9 @@
   per process on the first `StorageCorruptError`.
 - `services/` — pure business logic, no aiogram: `members.py` (validation, rights),
   `absence.py` (days, reasons, summary).
-- `handlers/` — aiogram routers: `start`, `pending`, `admin`, `absence`,
-  `reply_menu`, `notify`, `middleware`, `log_helpers` (orchestration only, no
-  business logic).
+- `handlers/` — aiogram routers: `start`, `pending`, `admin`, `report`,
+  `absence`, `reply_menu`, `notify`, `middleware`, `log_helpers` (orchestration
+  only, no business logic).
 - `keyboards/` — keyboards built from `services` predicates and domain tables
   (`services.members`, `services.absence.REASONS`).
 - `callbacks.py` — CallbackData factories (no raw strings in handlers).
@@ -46,6 +47,8 @@ Dependencies: handlers → services → storage. No reverse deps.
   `notify→log_helpers`, `admin→notify` — document new ones here. Shared utilities:
   `notify`, `reply_menu`, `log_helpers` (the latter imported by `bot`, `start`,
   `pending`, `middleware` and `notify`).
+  `handlers/report.py` uses `services.members`, `services.absence`,
+  `keyboards.report` and `storage` only — it adds no handler-to-handler edge.
 `services`/`handlers` use `storage` constants (`MEMBER_APPROVED`, `ROLE_*`, `ABSENCE_*`)
   and pure helpers (e.g. `is_identical_absence`, defined in `storage.py`, used in
   `services/absence.py`); `handlers/pending.py` also uses the `RESULT_*` verdict

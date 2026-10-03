@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 import texts
-from handlers.start import OnboardingForm, cmd_start, receive_full_name, reports_stub
+from handlers.start import OnboardingForm, cmd_start, receive_full_name
 from storage import MEMBER_APPROVED, MEMBER_PENDING, MEMBER_REMOVED, Storage
 from tests.fakes import ADMIN_ID, _FakeMessage, _FakeState
 
@@ -111,27 +111,3 @@ async def test_receive_full_name_invalid(tmp_path):
 
     assert any(texts.ONBOARDING_PROMPT in t for t, _ in msg.answers)
 
-
-# 8. Reports stub allowed for group_lead
-@pytest.mark.asyncio
-async def test_reports_stub_allowed(tmp_path):
-    storage = Storage(tmp_path)
-    await storage.upsert_member(111, "Лід Групи", "lead", status=MEMBER_APPROVED)
-    await storage.add_role(111, "group_lead")
-
-    msg = _FakeMessage(from_user_id=111)
-    await reports_stub(msg, storage)
-
-    assert any(texts.REPORTS_STUB in t for t, _ in msg.answers)
-
-
-# 9. Reports stub denied for plain student
-@pytest.mark.asyncio
-async def test_reports_stub_denied(tmp_path):
-    storage = Storage(tmp_path)
-    await storage.upsert_member(111, "Студент Тестовий", "student", status=MEMBER_APPROVED)
-
-    msg = _FakeMessage(from_user_id=111)
-    await reports_stub(msg, storage)
-
-    assert any(texts.NOT_ALLOWED_REPORTS in t for t, _ in msg.answers)

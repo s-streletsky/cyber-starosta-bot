@@ -11,16 +11,19 @@ from callbacks import (
     ADMIN_SET_ROLE,
     APPROVE_ACCEPT,
     APPROVE_REJECT,
+    REPORT_TODAY,
     AdminCb,
     ApproveCb,
     ConfirmCb,
     DayCb,
     DayCtl,
     ReasonCb,
+    ReportCb,
 )
 from keyboards.absence import back_keyboard, confirm_keyboard, day_keyboard, reason_keyboard
 from keyboards.admin import person_list_keyboard, role_choice_keyboard
 from keyboards.approvals import request_keyboard
+from keyboards.report import report_menu_keyboard
 from services.absence import REASONS
 from storage import ROLE_GROUP_LEAD, ROLE_SUPERVISOR
 
@@ -128,3 +131,10 @@ def test_request_keyboard_round_trips():
     parsed = ApproveCb.unpack(buttons[1].callback_data)
     assert parsed.action == APPROVE_REJECT
     assert parsed.user_id == 42
+
+
+def test_report_menu_keyboard_round_trips():
+    buttons = _buttons(report_menu_keyboard())
+
+    assert buttons[0].text == texts.REPORT_TODAY_BUTTON
+    assert ReportCb.unpack(buttons[0].callback_data).action == REPORT_TODAY

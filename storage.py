@@ -144,6 +144,18 @@ class Storage:
         record = self._index.get((user_id, date))
         return dict(record) if record is not None else None
 
+    async def list_absences_for_date(self, date: str) -> list[tuple[int, dict[str, Any]]]:
+        """All journal records for one date as (user_id, record) copies.
+
+        Reads the in-memory index only: no await points, no file I/O
+        (mirrors the lock-free read invariant of get_record).
+        """
+        return [
+            (user_id, dict(record))
+            for (user_id, record_date), record in self._index.items()
+            if record_date == date
+        ]
+
     # ---------- absence writes ----------
 
     async def upsert_absences_batch(

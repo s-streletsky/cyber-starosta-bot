@@ -166,3 +166,57 @@ def is_valid_reason(code: str) -> bool:
 def build_success_text(dates: list[date], reason_label: str) -> str:
     """Step 4 text after writing to storage."""
     return texts.SUCCESS.format(dates=format_dates_short(dates), reason=reason_label)
+
+
+# --- reports (selections) ---
+
+
+def reason_brief(reason_code: str, reason_text: str | None = None) -> str:
+    """Short reason for a report line: «💊 хвороба» or «✍️ Інше: <text>»."""
+    if reason_code == REASON_OTHER:
+        return texts.CONFIRM_OTHER_REASON.format(text=reason_text or "")
+    emoji = _REASON_LABELS.get(reason_code, reason_code).partition(" ")[0]
+    return f"{emoji} {reason_display(reason_code)}"
+
+
+def build_absentees(
+    members: list[tuple[int, dict[str, Any]]],
+    records: list[tuple[int, dict[str, Any]]],
+) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+    """Joins records with members, ordered by display name then user_id.
+
+    Records whose user_id has no member are ignored. The ordering is
+    case-insensitive and deterministic for stable report output.
+    """
+    member_by_id = {user_id: member for user_id, member in members}
+    absentees = [
+        (member_by_id[user_id], record)
+        for user_id, record in records
+        if user_id in member_by_id
+    ]
+    absentees.sort(
+        key=lambda pair: (
+            (pair[0].get("display_name") or "").casefold(),
+            pair[1]["user_id"],
+        )
+    )
+    return absentees
+
+
+def format_absentee_report(
+    day: date, absentees: list[tuple[dict[str, Any], dict[str, Any]]]
+) -> str:
+    """One day's report: a header plus one line per absentee, or an empty notice."""
+    if not absentees:
+        return texts.REPORT_TODAY_EMPTY
+    lines = [
+        texts.REPORT_TODAY_HEADER.format(date=format_date_full(day), weekday=weekday_short(day))
+    ]
+    for member, record in absentees:
+        lines.append(
+            texts.REPORT_LINE.format(
+                name=member.get("display_name") or "?",
+                reason=reason_brief(record.get("reason", ""), record.get("reason_text")),
+            )
+        )
+    return "\n".join(lines)

@@ -5,7 +5,7 @@ from typing import get_args
 import pytest
 
 import callbacks
-from callbacks import AdminCb, ApproveCb, ConfirmCb, DayCb, DayCtl, ReasonCb
+from callbacks import AdminCb, ApproveCb, ConfirmCb, DayCb, DayCtl, ReasonCb, ReportCb
 
 
 def test_day_callback_format():
@@ -62,6 +62,11 @@ def test_admin_callbacks_within_64_bytes():
     assert len(packed.encode()) <= 64
 
 
+def test_report_callback_format():
+    assert ReportCb(action="today").pack() == "rep:today"
+    assert ReportCb.unpack("rep:today").action == "today"
+
+
 # --- literal/constant contract: the inline Literal strings must match the constants ---
 
 
@@ -94,3 +99,7 @@ def test_approve_literal_matches_constants():
         callbacks.APPROVE_ACCEPT,
         callbacks.APPROVE_REJECT,
     }
+
+
+def test_report_literal_matches_constants():
+    assert set(get_args(ReportCb.model_fields["action"].annotation)) == {callbacks.REPORT_TODAY}

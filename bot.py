@@ -17,6 +17,7 @@ from handlers.middleware import AccessControlMiddleware
 from handlers.notify import notify_safe
 from handlers.pending import router as pending_router
 from handlers.reply_menu import menu_for
+from handlers.report import router as report_router
 from handlers.start import router as start_router
 from keyboards.menu import menu_keyboard
 from services.members import is_active_group_lead, is_admin
@@ -143,6 +144,7 @@ async def main() -> None:
     dp.include_router(start_router)
     dp.include_router(pending_router)
     dp.include_router(admin_router)
+    dp.include_router(report_router)
     dp.include_router(absence_router)
 
     await dp.start_polling(bot)

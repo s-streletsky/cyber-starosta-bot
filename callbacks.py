@@ -21,6 +21,9 @@ ADMIN_DEMOTE: Final = "demote"
 ADMIN_REMOVE: Final = "remove"
 ADMIN_SET_HEAD: Final = "sethead"
 
+# --- ReportCb.action ---
+REPORT_TODAY: Final = "today"
+
 # --- shared action values: ACTION_BACK (ReasonCb.code, ConfirmCb.action);
 # ACTION_NEXT / ACTION_CANCEL (DayCtl.action) ---
 ACTION_NEXT: Final = "next"
@@ -76,3 +79,9 @@ class AdminCb(CallbackData, prefix="adm"):
     action: AdminAction
     user_id: int
     role: str | None = None
+
+
+class ReportCb(CallbackData, prefix="rep"):
+    """Report selection: «rep:today»."""
+
+    action: Literal["today"]

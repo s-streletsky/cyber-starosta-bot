@@ -4,13 +4,13 @@ Unlike the unit tests, these drive real aiogram Update objects through a real
 Dispatcher, with a fake BaseSession standing in for the Telegram HTTP layer.
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 import pytest
 from aiogram import Bot, Dispatcher, Router
 from aiogram.client.session.base import BaseSession
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.methods import AnswerCallbackQuery, SendMessage
+from aiogram.methods import AnswerCallbackQuery, EditMessageText, SendMessage
 from aiogram.types import CallbackQuery, Chat, Message, Update, User
 
 import texts
@@ -19,6 +19,7 @@ from handlers.absence import router as absence_router
 from handlers.admin import router as admin_router
 from handlers.middleware import AccessControlMiddleware
 from handlers.pending import router as pending_router
+from handlers.report import router as report_router
 from handlers.start import router as start_router
 from storage import MEMBER_APPROVED, Storage, StorageCorruptError
 from tests.fakes import ADMIN_ID
@@ -30,6 +31,7 @@ class _FakeSession(BaseSession):
     def __init__(self) -> None:
         super().__init__()
         self.sent_messages: list[tuple[int, str]] = []
+        self.edited_messages: list[tuple[int, str]] = []
         self.answered_callbacks: list[tuple[str, bool]] = []
 
     async def close(self) -> None:
@@ -50,6 +52,14 @@ class _FakeSession(BaseSession):
         if isinstance(method, AnswerCallbackQuery):
             self.answered_callbacks.append((method.text or "", bool(method.show_alert)))
             return True
+        if isinstance(method, EditMessageText):
+            self.edited_messages.append((method.chat_id, method.text))
+            return Message(
+                message_id=len(self.edited_messages),
+                date=datetime.now(UTC),
+                chat=Chat(id=method.chat_id, type="private"),
+                text=method.text,
+            )
         if method.__class__.__name__ == "GetChat":
             return Chat(id=method.chat_id, type="private", username=None)
         return True
@@ -63,6 +73,7 @@ def dp() -> Dispatcher:
     dispatcher.include_router(start_router)
     dispatcher.include_router(pending_router)
     dispatcher.include_router(admin_router)
+    dispatcher.include_router(report_router)
     dispatcher.include_router(absence_router)
     return dispatcher
 
@@ -171,3 +182,31 @@ async def test_storage_corrupt_error_alerts_admins_and_user(dp, tmp_path):
 
     assert (ADMIN_ID, texts.ADMIN_STORAGE_ALERT) in session.sent_messages
     assert (ADMIN_ID, texts.ERROR_REPLY) in session.sent_messages
+
+
+async def test_reports_button_then_today_callback(dp, tmp_path, monkeypatch):
+    monkeypatch.setattr("handlers.report.current_day", lambda: date(2026, 10, 3))
+    session = _FakeSession()
+    storage = Storage(tmp_path)
+    await storage.upsert_member(111, "Лід Групи", "lead", status=MEMBER_APPROVED)
+    await storage.add_role(111, "group_lead")
+    await storage.upsert_member(222, "Іваненко Петро", "ivan", status=MEMBER_APPROVED)
+    await storage.upsert_absences_batch(222, ["2026-10-03"], "illness", None)
+    bot = _make_bot(dp, storage, session)
+
+    await dp.feed_update(bot, _message_update(1, texts.MENU_REPORTS, _user(111)))
+    assert (111, texts.REPORT_PROMPT) in session.sent_messages
+
+    await dp.feed_update(bot, _callback_update(2, "rep:today", _user(111)))
+    assert any("• Іваненко Петро — 💊 хвороба" in text for _, text in session.edited_messages)
+
+
+async def test_foreign_callback_reaches_stale_handler(dp, tmp_path):
+    session = _FakeSession()
+    storage = Storage(tmp_path)
+    await storage.upsert_member(111, "Студент Тестовий", "student", status=MEMBER_APPROVED)
+    bot = _make_bot(dp, storage, session)
+
+    await dp.feed_update(bot, _callback_update(1, "unknown:data", _user(111)))
+
+    assert (texts.STALE_CALLBACK, True) in session.answered_callbacks

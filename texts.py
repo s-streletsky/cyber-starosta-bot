@@ -30,12 +30,18 @@ REQUEST_CARD = "🆕 Заявка: {display_name} ({username}) — ID {user_id}"
 
 # --- roles and menu ---
 MENU_REPORTS = "📊 Вибірки"
-REPORTS_STUB = "📊 Вибірки з'являться у наступному оновленні."
 NOT_ALLOWED_ABSENCE = "Відмічати пропуски можуть лише студенти та старости"
 NOT_ALLOWED_REPORTS = "Вибірки доступні старості, супервайзеру та адмінам"
 ROLE_UPDATE_NOTIFY = "🔔 Твоя роль оновлена: {role}."
 ROLE_BACK_TO_STUDENT = "🔔 Роль знята — ти знову студент"
 ACCESS_CLOSED_NOTIFY = "🚫 Доступ закрито"
+
+# --- reports (selections) ---
+REPORT_PROMPT = "📊 Вибірки\nОбери звіт:"
+REPORT_TODAY_BUTTON = "📅 За сьогодні"
+REPORT_TODAY_HEADER = "📊 Відсутні на {date} ({weekday}):"
+REPORT_LINE = "• {name} — {reason}"
+REPORT_TODAY_EMPTY = "✅ Сьогодні відсутніх немає"
 
 # --- requests (/pending, cards) ---
 BUTTON_ACCEPT = "✅ Прийняти"

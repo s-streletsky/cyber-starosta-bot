@@ -7,11 +7,14 @@ import pytest
 
 from services.absence import (
     REASONS,
+    build_absentees,
     build_days,
     build_success_text,
     classify_record,
+    format_absentee_report,
     format_confirm,
     is_valid_reason,
+    reason_brief,
     reason_display,
     validate_reason_text,
 )
@@ -165,3 +168,88 @@ def test_build_success_text():
 
     assert text.startswith("✅ Позначено: 29.09, 30.09 — хвороба")
     assert "запис заміниться" in text
+
+
+# --- reports (selections) ---
+
+
+def test_reason_brief_known_codes():
+    assert reason_brief("illness") == "💊 хвороба"
+    assert reason_brief("academic") == "🎓 інша пара/перездача"
+    assert reason_brief("event") == "🏆 змагання/виїзд"
+
+
+def test_reason_brief_other_with_text():
+    assert reason_brief("other", "пробки на мосту") == "✍️ Інше: пробки на мосту"
+
+
+def test_reason_brief_other_empty():
+    assert reason_brief("other") == "✍️ Інше: "
+
+
+def test_build_absentees_joins_and_sorts_by_name():
+    members = [
+        (2, {"display_name": "Петренко Іван"}),
+        (1, {"display_name": "бондаренко Петро"}),  # lowercase proves casefold is applied
+        (3, {"display_name": "Сидоренко Марія"}),
+    ]
+    records = [
+        (3, {"user_id": 3, "reason": "event", "reason_text": None}),
+        (1, {"user_id": 1, "reason": "illness", "reason_text": None}),
+        (2, {"user_id": 2, "reason": "other", "reason_text": "пробки на мосту"}),
+    ]
+
+    absentees = build_absentees(members, records)
+
+    assert [member["display_name"] for member, _ in absentees] == [
+        "бондаренко Петро",
+        "Петренко Іван",
+        "Сидоренко Марія",
+    ]
+
+
+def test_build_absentees_ignores_unknown_user_id():
+    members = [(1, {"display_name": "Іваненко Петро"})]
+    records = [
+        (1, {"user_id": 1, "reason": "illness", "reason_text": None}),
+        (99, {"user_id": 99, "reason": "illness", "reason_text": None}),
+    ]
+
+    absentees = build_absentees(members, records)
+
+    assert len(absentees) == 1
+    assert absentees[0][1]["user_id"] == 1
+
+
+def test_build_absentees_empty():
+    assert build_absentees([], []) == []
+
+
+def test_format_absentee_report_exact():
+    absentees = [
+        (
+            {"display_name": "Іваненко Петро"},
+            {"user_id": 1, "reason": "illness", "reason_text": None},
+        ),
+        (
+            {"display_name": "Петренко Іван"},
+            {"user_id": 2, "reason": "other", "reason_text": "пробки на мосту"},
+        ),
+        (
+            {"display_name": "Сидоренко Марія"},
+            {"user_id": 3, "reason": "event", "reason_text": None},
+        ),
+    ]
+
+    text = format_absentee_report(date(2026, 10, 3), absentees)
+
+    assert text.splitlines() == [
+        "📊 Відсутні на 03.10.2026 (сб):",
+        "• Іваненко Петро — 💊 хвороба",
+        "• Петренко Іван — ✍️ Інше: пробки на мосту",
+        "• Сидоренко Марія — 🏆 змагання/виїзд",
+    ]
+
+
+def test_format_absentee_report_empty():
+    assert format_absentee_report(date(2026, 10, 3), []) == "✅ Сьогодні відсутніх немає"
