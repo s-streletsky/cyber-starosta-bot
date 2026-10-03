@@ -5,7 +5,16 @@ from typing import get_args
 import pytest
 
 import callbacks
-from callbacks import AdminCb, ApproveCb, ConfirmCb, DayCb, DayCtl, ReasonCb, ReportCb
+from callbacks import (
+    AdminCb,
+    ApproveCb,
+    ConfirmCb,
+    DayCb,
+    DayCtl,
+    DeleteCb,
+    ReasonCb,
+    ReportCb,
+)
 
 
 def test_day_callback_format():
@@ -67,6 +76,16 @@ def test_report_callback_format():
     assert ReportCb.unpack("rep:today").action == "today"
 
 
+def test_delete_callback_format():
+    assert DeleteCb(action="confirm").pack() == "dl:confirm"
+    assert DeleteCb(action="back").pack() == "dl:back"
+    assert DeleteCb.unpack("dl:confirm").action == "confirm"
+
+
+def test_delete_callback_within_64_bytes():
+    assert len(DeleteCb(action="confirm").pack().encode()) <= 64
+
+
 # --- literal/constant contract: the inline Literal strings must match the constants ---
 
 
@@ -103,3 +122,10 @@ def test_approve_literal_matches_constants():
 
 def test_report_literal_matches_constants():
     assert set(get_args(ReportCb.model_fields["action"].annotation)) == {callbacks.REPORT_TODAY}
+
+
+def test_delete_literal_matches_constants():
+    assert set(get_args(DeleteCb.model_fields["action"].annotation)) == {
+        callbacks.DELETE_CONFIRM,
+        callbacks.ACTION_BACK,
+    }

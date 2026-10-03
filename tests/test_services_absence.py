@@ -13,6 +13,9 @@ from services.absence import (
     classify_record,
     format_absentee_report,
     format_confirm,
+    format_delete_confirm,
+    format_delete_result,
+    is_deletable_day,
     is_valid_reason,
     reason_brief,
     reason_display,
@@ -168,6 +171,38 @@ def test_build_success_text():
 
     assert text.startswith("✅ Позначено: 29.09, 30.09 — хвороба")
     assert "запис заміниться" in text
+
+
+# --- logical deletion (tombstones) ---
+
+
+def test_is_deletable_day_today_and_future_only():
+    today = date(2026, 10, 3)
+
+    assert is_deletable_day(date(2026, 10, 3), today) is True
+    assert is_deletable_day(date(2026, 10, 4), today) is True
+    assert is_deletable_day(date(2026, 10, 2), today) is False
+
+
+def test_format_delete_confirm_sorts_lines_and_appends_question():
+    text = format_delete_confirm([date(2026, 10, 4), date(2026, 10, 3)])
+
+    assert text.splitlines() == [
+        "🗑 03.10.2026 (сб)",
+        "🗑 04.10.2026 (вс)",
+        "Видалити обрані записи?",
+    ]
+
+
+def test_format_delete_result_success_and_empty():
+    assert format_delete_result([date(2026, 10, 3)]) == "🗑 Видалено: 03.10"
+    assert format_delete_result([]) == "Нічого видаляти — записів на ці дні немає"
+
+
+def test_format_delete_result_sorts_mixed_order():
+    text = format_delete_result([date(2026, 10, 4), date(2026, 10, 3)])
+
+    assert text == "🗑 Видалено: 03.10, 04.10"
 
 
 # --- reports (selections) ---

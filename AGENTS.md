@@ -14,6 +14,10 @@
 - `config.py` — env + fail-fast validation.
 - `storage.py` — persistence: `<DATA_DIR>/absences.jsonl` (append-only journal) +
   `<DATA_DIR>/members.json` (atomic roster). No DB. All mutations under `asyncio.Lock`.
+  Absences support logical deletion: `delete_absences_batch` appends a tombstone
+  (`ABSENCE_DELETED`, `is_deleted`); a deleted key reads as absent (`get_record` →
+  `None`) and is excluded from `list_absences_for_date`, so reports skip it.
+  Re-marking a deleted key appends a fresh active record (`ABSENCE_CREATED`).
 - Storage invariant: all mutations run under one `asyncio.Lock` with synchronous
   (no `await`) file I/O inside the critical section; reads (`get_record`,
   `list_absences_for_date`) are lock-free and rely on that invariant, returning
@@ -50,10 +54,16 @@ Dependencies: handlers → services → storage. No reverse deps.
   `handlers/report.py` uses `services.members`, `services.absence`,
   `keyboards.report` and `storage` only — it adds no handler-to-handler edge.
 `services`/`handlers` use `storage` constants (`MEMBER_APPROVED`, `ROLE_*`, `ABSENCE_*`)
-  and pure helpers (e.g. `is_identical_absence`, defined in `storage.py`, used in
-  `services/absence.py`); `handlers/pending.py` also uses the `RESULT_*` verdict
-  constants; `services` uses `texts` for localized string templates (e.g. `CONFIRM_*`
-  in `services/absence.py`); `config.ADMIN_USER_IDS` is imported lazily inside `is_admin()`.
+  and pure helpers (e.g. `is_identical_absence` used in `services/absence.py`;
+  `is_deleted` used only inside `storage.py`), `handlers/pending.py` also
+  uses the `RESULT_*` verdict constants; `services` uses `texts` for localized string
+  templates (e.g. `CONFIRM_*` in `services/absence.py`); `config.ADMIN_USER_IDS` is
+  imported lazily inside `is_admin()`.
+The reply menu gets a `MENU_DELETE` button (same `can_mark_absence` right) that starts
+  the logical-deletion flow (states `AbsenceForm.delete_day` / `delete_confirm`,
+  `DeleteCb` with actions `confirm`/`back`, `keyboards.absence.delete_confirm_keyboard`).
+  This adds no handler-to-handler edge: `handlers/absence.py` keeps its existing
+  `absence→reply_menu` import only.
 
 ## Code conventions
 - User texts (`texts.py`) — Ukrainian; logs, comments, docstrings — English.

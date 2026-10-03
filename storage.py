@@ -15,7 +15,7 @@ from typing import Any, Literal
 
 logger = logging.getLogger(__name__)
 
-AbsentStatus = Literal["created", "replaced", "identical"]
+AbsentStatus = Literal["created", "replaced", "identical", "deleted"]
 MemberStatus = Literal["created", "updated"]
 MemberState = Literal["approved", "pending", "removed"]
 PendingResult = Literal["approved", "rejected", "not_pending", "missing"]
@@ -40,6 +40,7 @@ UPSERT_UPDATED: MemberStatus = "updated"
 ABSENCE_CREATED: AbsentStatus = "created"
 ABSENCE_REPLACED: AbsentStatus = "replaced"
 ABSENCE_IDENTICAL: AbsentStatus = "identical"
+ABSENCE_DELETED: AbsentStatus = "deleted"
 
 # JSON dictionary files can be missing (normal first run), valid, or corrupt.
 READ_MISSING: ReadState = "missing"
@@ -61,6 +62,11 @@ def is_identical_absence(
         and record.get("reason") == reason
         and record.get("reason_text") == reason_text
     )
+
+
+def is_deleted(record: dict[str, Any] | None) -> bool:
+    """True when the record is a deletion tombstone (logical delete)."""
+    return record is not None and record.get("deleted") is True
 
 
 def _roles_of(member: dict[str, Any]) -> list[str]:
@@ -89,7 +95,10 @@ class Storage:
     """Two files in DATA_DIR:
 
     - absences.jsonl — append-only journal; reader contract: the last line for a
-      key (user_id, date) wins;
+      key (user_id, date) wins. Deletion is logical: a tombstone
+      ({"deleted": True}) is appended for the key, so deleted keys read as absent
+      (get_record → None) and are excluded from reports. Re-marking a deleted key
+      appends a fresh active record;
     - members.json — roster dictionary v2 (display_name, username, status, roles),
       written atomically (temp + os.replace). The optional boolean `is_head_lead` marks
       the head group lead — the recipient of request cards; no field means not lead.
@@ -140,9 +149,11 @@ class Storage:
                     self._index[(record["user_id"], record["date"])] = record
 
     async def get_record(self, user_id: int, date: str) -> dict[str, Any] | None:
-        """Last record for a key or None if there was no absence."""
+        """Last active record for a key or None (missing, or logically deleted)."""
         record = self._index.get((user_id, date))
-        return dict(record) if record is not None else None
+        if record is None or is_deleted(record):
+            return None
+        return dict(record)
 
     async def list_absences_for_date(self, date: str) -> list[tuple[int, dict[str, Any]]]:
         """All journal records for one date as (user_id, record) copies.
@@ -153,7 +164,7 @@ class Storage:
         return [
             (user_id, dict(record))
             for (user_id, record_date), record in self._index.items()
-            if record_date == date
+            if record_date == date and not is_deleted(record)
         ]
 
     # ---------- absence writes ----------
@@ -176,6 +187,8 @@ class Storage:
             for date in dates:
                 key = (user_id, date)
                 existing = self._index.get(key)
+                if is_deleted(existing):
+                    existing = None
                 if is_identical_absence(existing, reason, reason_text):
                     results.append(ABSENCE_IDENTICAL)
                     continue
@@ -190,6 +203,33 @@ class Storage:
                 self._append_line(record)
                 self._index[key] = record
                 results.append(ABSENCE_CREATED if existing is None else ABSENCE_REPLACED)
+            return results
+
+    async def delete_absences_batch(self, user_id: int, dates: list[str]) -> list[AbsentStatus]:
+        """Logical delete: append a tombstone per active record.
+
+        A missing or already-deleted key is a no-op and reports ABSENCE_IDENTICAL,
+        so repeated deletion is idempotent. Mirrors upsert_absences_batch: one lock
+        acquisition, fsync per appended line, no await inside the critical section.
+        """
+        async with self._lock:
+            results: list[AbsentStatus] = []
+            for date in dates:
+                key = (user_id, date)
+                existing = self._index.get(key)
+                if existing is None or is_deleted(existing):
+                    results.append(ABSENCE_IDENTICAL)
+                    continue
+
+                tombstone: dict[str, Any] = {
+                    "user_id": user_id,
+                    "date": date,
+                    "deleted": True,
+                    "created_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                }
+                self._append_line(tombstone)
+                self._index[key] = tombstone
+                results.append(ABSENCE_DELETED)
             return results
 
     def _append_line(self, record: dict[str, Any]) -> None:

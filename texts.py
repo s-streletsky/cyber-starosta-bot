@@ -112,6 +112,17 @@ SUCCESS = (
     "Якщо щось не так — познач ті самі дати спочатку з іншою причиною: запис заміниться"
 )
 
+# --- logical deletion of absence records ---
+MENU_DELETE = "🗑 Видалити запис"
+DELETE_PROMPT = "Обери записи для видалення (можна кілька).\nОбрано: {count}"
+ALERT_PICK_DELETE = "Спочатку познач запис"
+DELETE_CONFIRM_LINE = "🗑 {date} ({weekday})"
+DELETE_QUESTION = "Видалити обрані записи?"
+BUTTON_DELETE = "🗑 Видалити"
+DELETE_SUCCESS = "🗑 Видалено: {dates}"
+DELETE_NOTHING = "Нічого видаляти — записів на ці дні немає"
+DELETE_PAST_REJECTED = "Минулі записи видалити не можна"
+
 
 def brand_greeting(user_id: int) -> str:
     """Greeting for /start with the brand name from config."""

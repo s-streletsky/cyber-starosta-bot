@@ -11,16 +11,24 @@ from callbacks import (
     ADMIN_SET_ROLE,
     APPROVE_ACCEPT,
     APPROVE_REJECT,
+    DELETE_CONFIRM,
     REPORT_TODAY,
     AdminCb,
     ApproveCb,
     ConfirmCb,
     DayCb,
     DayCtl,
+    DeleteCb,
     ReasonCb,
     ReportCb,
 )
-from keyboards.absence import back_keyboard, confirm_keyboard, day_keyboard, reason_keyboard
+from keyboards.absence import (
+    back_keyboard,
+    confirm_keyboard,
+    day_keyboard,
+    delete_confirm_keyboard,
+    reason_keyboard,
+)
 from keyboards.admin import person_list_keyboard, role_choice_keyboard
 from keyboards.approvals import request_keyboard
 from keyboards.report import report_menu_keyboard
@@ -87,6 +95,17 @@ def test_back_keyboard_round_trips():
 
     assert buttons[0].text == texts.BUTTON_BACK
     assert ConfirmCb.unpack(buttons[0].callback_data).action == ACTION_BACK
+
+
+def test_delete_confirm_keyboard_round_trips():
+    buttons = _buttons(delete_confirm_keyboard())
+
+    assert buttons[0].text == texts.BUTTON_DELETE
+    assert DeleteCb.unpack(buttons[0].callback_data).action == DELETE_CONFIRM
+    assert buttons[1].text == texts.BUTTON_BACK
+    assert DeleteCb.unpack(buttons[1].callback_data).action == ACTION_BACK
+    assert buttons[2].text == texts.BUTTON_CANCEL
+    assert DayCtl.unpack(buttons[2].callback_data).action == ACTION_CANCEL
 
 
 def test_person_list_keyboard_round_trips_and_marks_head_lead():

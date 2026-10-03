@@ -9,7 +9,7 @@ from services.members import can_mark_absence, can_view_reports, synthetic_membe
 def role_keyboard(member: dict | None, is_admin: bool) -> ReplyKeyboardMarkup:
     """Menu by rights:
 
-    - can_mark_absence → [I will be absent];
+    - can_mark_absence → [I will be absent], [Delete an entry];
     - can_view_reports → [Selections].
 
     Rights come from services.members, so this module never hard-codes role names.
@@ -20,6 +20,7 @@ def role_keyboard(member: dict | None, is_admin: bool) -> ReplyKeyboardMarkup:
     rows: list[list[KeyboardButton]] = []
     if show_absence:
         rows.append([KeyboardButton(text=texts.MENU_ABSENCE)])
+        rows.append([KeyboardButton(text=texts.MENU_DELETE)])
     if show_reports:
         rows.append([KeyboardButton(text=texts.MENU_REPORTS)])
     return ReplyKeyboardMarkup(

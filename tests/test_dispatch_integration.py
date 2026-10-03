@@ -15,12 +15,14 @@ from aiogram.types import CallbackQuery, Chat, Message, Update, User
 
 import texts
 from bot import make_error_handler
+from config import TZ
 from handlers.absence import router as absence_router
 from handlers.admin import router as admin_router
 from handlers.middleware import AccessControlMiddleware
 from handlers.pending import router as pending_router
 from handlers.report import router as report_router
 from handlers.start import router as start_router
+from services.absence import build_days
 from storage import MEMBER_APPROVED, Storage, StorageCorruptError
 from tests.fakes import ADMIN_ID
 
@@ -210,3 +212,55 @@ async def test_foreign_callback_reaches_stale_handler(dp, tmp_path):
     await dp.feed_update(bot, _callback_update(1, "unknown:data", _user(111)))
 
     assert (texts.STALE_CALLBACK, True) in session.answered_callbacks
+
+
+async def test_mark_then_delete_then_report_is_empty(dp, tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "handlers.absence.build_days", lambda tz: build_days(TZ, today=date(2026, 10, 3))
+    )
+    monkeypatch.setattr("handlers.absence.current_day", lambda: date(2026, 10, 3))
+    monkeypatch.setattr("handlers.report.current_day", lambda: date(2026, 10, 3))
+    session = _FakeSession()
+    storage = Storage(tmp_path)
+    await storage.upsert_member(111, "Лід Групи", "lead", status=MEMBER_APPROVED)
+    await storage.add_role(111, "group_lead")
+    bot = _make_bot(dp, storage, session)
+
+    await dp.feed_update(bot, _message_update(1, texts.MENU_ABSENCE, _user(111)))
+    await dp.feed_update(bot, _callback_update(2, "d:2026-10-03", _user(111)))
+    await dp.feed_update(bot, _callback_update(3, "dc:next", _user(111)))
+    await dp.feed_update(bot, _callback_update(4, "r:illness", _user(111)))
+    await dp.feed_update(bot, _callback_update(5, "c:send", _user(111)))
+    assert await storage.get_record(111, "2026-10-03") is not None
+
+    await dp.feed_update(bot, _message_update(6, texts.MENU_DELETE, _user(111)))
+    await dp.feed_update(bot, _callback_update(7, "d:2026-10-03", _user(111)))
+    await dp.feed_update(bot, _callback_update(8, "dc:next", _user(111)))
+    await dp.feed_update(bot, _callback_update(9, "dl:confirm", _user(111)))
+    assert await storage.get_record(111, "2026-10-03") is None
+
+    await dp.feed_update(bot, _callback_update(10, "rep:today", _user(111)))
+    assert any(text == texts.REPORT_TODAY_EMPTY for _, text in session.edited_messages)
+
+
+async def test_delete_button_works_from_other_text_state(dp, tmp_path, monkeypatch):
+    """Regression: the delete menu button must not be captured as free-text reason."""
+    monkeypatch.setattr(
+        "handlers.absence.build_days", lambda tz: build_days(TZ, today=date(2026, 10, 3))
+    )
+    monkeypatch.setattr("handlers.absence.current_day", lambda: date(2026, 10, 3))
+    session = _FakeSession()
+    storage = Storage(tmp_path)
+    await storage.upsert_member(111, "Студент Тестовий", "student", status=MEMBER_APPROVED)
+    await storage.upsert_absences_batch(111, ["2026-10-03"], "illness", None)
+    bot = _make_bot(dp, storage, session)
+
+    await dp.feed_update(bot, _message_update(1, texts.MENU_ABSENCE, _user(111)))
+    await dp.feed_update(bot, _callback_update(2, "d:2026-10-03", _user(111)))
+    await dp.feed_update(bot, _callback_update(3, "dc:next", _user(111)))
+    await dp.feed_update(bot, _callback_update(4, "r:other", _user(111)))
+
+    await dp.feed_update(bot, _message_update(5, texts.MENU_DELETE, _user(111)))
+
+    assert any(text == texts.DELETE_PROMPT.format(count=0) for _, text in session.sent_messages)
+    assert await storage.get_record(111, "2026-10-03") is not None

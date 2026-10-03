@@ -8,9 +8,11 @@ from callbacks import (
     ACTION_CANCEL,
     ACTION_NEXT,
     ACTION_SEND,
+    DELETE_CONFIRM,
     ConfirmCb,
     DayCb,
     DayCtl,
+    DeleteCb,
     ReasonCb,
 )
 from services.absence import REASONS
@@ -114,5 +116,31 @@ def back_keyboard() -> InlineKeyboardMarkup:
                     callback_data=ConfirmCb(action=ACTION_BACK).pack(),
                 )
             ]
+        ]
+    )
+
+
+def delete_confirm_keyboard() -> InlineKeyboardMarkup:
+    """Delete / Back / Cancel for the deletion confirmation step."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=texts.BUTTON_DELETE,
+                    callback_data=DeleteCb(action=DELETE_CONFIRM).pack(),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=texts.BUTTON_BACK,
+                    callback_data=DeleteCb(action=ACTION_BACK).pack(),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=texts.BUTTON_CANCEL,
+                    callback_data=DayCtl(action=ACTION_CANCEL).pack(),
+                )
+            ],
         ]
     )

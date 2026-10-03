@@ -168,6 +168,31 @@ def build_success_text(dates: list[date], reason_label: str) -> str:
     return texts.SUCCESS.format(dates=format_dates_short(dates), reason=reason_label)
 
 
+# --- logical deletion (tombstones) ---
+
+
+def is_deletable_day(day: date, today: date) -> bool:
+    """Only today and later are deletable; strictly past days are not."""
+    return day >= today
+
+
+def format_delete_confirm(days: list[date]) -> str:
+    """Deletion confirmation: one line per date (sorted) + the question, no reason."""
+    lines = [
+        texts.DELETE_CONFIRM_LINE.format(date=format_date_full(day), weekday=weekday_short(day))
+        for day in sorted(days)
+    ]
+    lines.append(texts.DELETE_QUESTION)
+    return "\n".join(lines)
+
+
+def format_delete_result(deleted: list[date]) -> str:
+    """Success text with the deleted dates, or a notice when nothing was deleted."""
+    if not deleted:
+        return texts.DELETE_NOTHING
+    return texts.DELETE_SUCCESS.format(dates=format_dates_short(sorted(deleted)))
+
+
 # --- reports (selections) ---
 
 

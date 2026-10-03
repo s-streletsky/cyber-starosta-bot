@@ -24,6 +24,9 @@ ADMIN_SET_HEAD: Final = "sethead"
 # --- ReportCb.action ---
 REPORT_TODAY: Final = "today"
 
+# --- DeleteCb.action ---
+DELETE_CONFIRM: Final = "confirm"
+
 # --- shared action values: ACTION_BACK (ReasonCb.code, ConfirmCb.action);
 # ACTION_NEXT / ACTION_CANCEL (DayCtl.action) ---
 ACTION_NEXT: Final = "next"
@@ -85,3 +88,9 @@ class ReportCb(CallbackData, prefix="rep"):
     """Report selection: «rep:today»."""
 
     action: Literal["today"]
+
+
+class DeleteCb(CallbackData, prefix="dl"):
+    """Deletion confirmation: «dl:confirm» / «dl:back»."""
+
+    action: Literal["confirm", "back"]
