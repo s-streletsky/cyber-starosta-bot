@@ -1,0 +1,168 @@
+"""Pure logic of the "I will be absent" flow: days, reasons, confirmation summary.
+
+No aiogram — the module is covered by tests directly.
+"""
+
+from datetime import date, datetime, timedelta
+from typing import Any, Literal
+from zoneinfo import ZoneInfo
+
+import texts
+from storage import (
+    ABSENCE_CREATED,
+    ABSENCE_IDENTICAL,
+    ABSENCE_REPLACED,
+    AbsentStatus,
+    is_identical_absence,
+)
+
+# Code of the free-text reason; compared in handlers and in this module.
+REASON_OTHER = "other"
+
+# 7 reasons: order and emoji match the keyboard.
+REASONS: list[tuple[str, str]] = [
+    ("illness", "💊 Хвороба"),
+    ("academic", "🎓 Інша пара/перездача"),
+    ("event", "🏆 Змагання/виїзд"),
+    ("family", "👨‍👩‍👧 Сімейні справи"),
+    ("transport", "🚇 Транспорт/пробки"),
+    ("excused", "📋 Дозволена відсутність"),
+    (REASON_OTHER, "✍️ Інше…"),
+]
+
+REASON_TEXT_MAX = 120
+
+_REASON_LABELS = dict(REASONS)
+_WEEKDAYS = ("пн", "вт", "ср", "чт", "пт", "сб", "вс")
+_DAY_PREFIXES = ("Сьогодні", "Завтра", "Післязавтра")
+
+
+def weekday_short(day: date) -> str:
+    """Short local weekday (2-letter abbreviation)."""
+    return _WEEKDAYS[day.weekday()]
+
+
+def format_date_short(day: date) -> str:
+    """28.09"""
+    return day.strftime("%d.%m")
+
+
+def format_date_full(day: date) -> str:
+    """29.09.2026"""
+    return day.strftime("%d.%m.%Y")
+
+
+def format_dates_short(days: list[date]) -> str:
+    """29.09, 30.09"""
+    return ", ".join(format_date_short(day) for day in days)
+
+
+def build_days(
+    tz_zone: ZoneInfo, today: date | None = None
+) -> list[dict[str, Any]]:
+    """Three consecutive days: today, tomorrow, the day after tomorrow.
+
+    If today is not provided, the current date in tz_zone is used (at render time).
+    Each item: {"day": date, "label": "<prefix>, 28.09 (<weekday>)"}.
+    """
+    if today is None:
+        today = datetime.now(tz_zone).date()
+
+    days: list[dict[str, Any]] = []
+    for offset, prefix in enumerate(_DAY_PREFIXES):
+        day = today + timedelta(days=offset)
+        days.append(
+            {"day": day, "label": f"{prefix}, {format_date_short(day)} ({weekday_short(day)})"}
+        )
+    return days
+
+
+def reason_display(reason_code: str, reason_text: str | None = None) -> str:
+    """Reason for messages: «illness» by code, free text for other."""
+    if reason_code == REASON_OTHER:
+        text = (reason_text or "").strip()
+        if text:
+            return text
+        return ""
+    label = _REASON_LABELS.get(reason_code, reason_code)
+    name = label.partition(" ")[2]
+    return (name or label).lower()
+
+
+def classify_record(
+    record: dict[str, Any] | None, reason_code: str, reason_text: str | None
+) -> AbsentStatus:
+    """created — there was no record; identical — same reason; replaced — will be replaced."""
+    if record is None:
+        return ABSENCE_CREATED
+    if is_identical_absence(record, reason_code, reason_text):
+        return ABSENCE_IDENTICAL
+    return ABSENCE_REPLACED
+
+
+def _reason_line(reason_code: str, reason_text: str | None) -> str:
+    if reason_code == REASON_OTHER:
+        return texts.CONFIRM_OTHER_REASON.format(text=reason_text or "")
+    emoji = _REASON_LABELS.get(reason_code, reason_code).partition(" ")[0]
+    return texts.CONFIRM_REASON.format(emoji=emoji, name=reason_display(reason_code))
+
+
+def format_confirm(
+    records: list[date],
+    reason_code: str,
+    reason_text: str | None,
+    existing_index: dict[str, dict[str, Any]],
+) -> str:
+    """Confirmation step summary: one line per date + a reason line.
+
+    records — selected dates; existing_index — the user's already existing records
+    in the format {"YYYY-MM-DD": record}.
+    """
+    lines: list[str] = []
+    for day in sorted(records):
+        existing = existing_index.get(day.isoformat())
+        status = classify_record(existing, reason_code, reason_text)
+        date_full = format_date_full(day)
+        weekday = weekday_short(day)
+        if status == ABSENCE_CREATED:
+            lines.append(texts.CONFIRM_NEW_LINE.format(date=date_full, weekday=weekday))
+        elif status == ABSENCE_IDENTICAL:
+            lines.append(texts.CONFIRM_IDENTICAL_LINE.format(date=date_full, weekday=weekday))
+        else:
+            old = existing or {}
+            old_reason = reason_display(old.get("reason", ""), old.get("reason_text"))
+            lines.append(
+                texts.CONFIRM_REPLACED_LINE.format(
+                    date=date_full, weekday=weekday, old_reason=old_reason
+                )
+            )
+    lines.append(_reason_line(reason_code, reason_text))
+    return "\n".join(lines)
+
+
+class ReasonTextError(ValueError):
+    """Empty or too-long free-text reason; `kind` selects the user-facing message."""
+
+    def __init__(self, kind: Literal["empty", "too_long"]) -> None:
+        super().__init__(kind)
+        self.kind = kind
+
+
+def validate_reason_text(text: str) -> str:
+    """Strip; ReasonTextError if empty or longer than REASON_TEXT_MAX characters."""
+    cleaned = (text or "").strip()
+    if not cleaned:
+        raise ReasonTextError("empty")
+    if len(cleaned) > REASON_TEXT_MAX:
+        raise ReasonTextError("too_long")
+    return cleaned
+
+
+def is_valid_reason(code: str) -> bool:
+    """Whether the code belongs to the reason keyboard (REASONS)."""
+    return code in _REASON_LABELS
+
+
+def build_success_text(dates: list[date], reason_label: str) -> str:
+    """Step 4 text after writing to storage."""
+    return texts.SUCCESS.format(dates=format_dates_short(dates), reason=reason_label)
