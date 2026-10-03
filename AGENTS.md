@@ -2,7 +2,7 @@
 
 ## Stack and run
 - Python >= 3.11 (code uses `datetime.UTC`).
-- Dependencies: `aiogram==3.15.0`, `python-dotenv`.
+- Dependencies: `aiogram==3.31.0`, `python-dotenv`.
 - Dev: `pytest==9.1.1`, `pytest-asyncio==1.4.0`, `ruff==0.16.9`, `mypy==1.11.2`, `tzdata==2026.4` (Windows).
 - Reproducible installs: `requirements.txt` pins the full runtime transitive
   closure; dev tools live in `pyproject.toml` under `[dependency-groups] dev` and

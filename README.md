@@ -4,7 +4,7 @@ Telegram bot for a small student group (~30 people). Students mark the days they
 will be absent; the group lead reviews join requests and manages roles. All data
 lives in plain files — no database.
 
-- Stack: Python 3.11+ (developed on 3.13), [aiogram](https://docs.aiogram.dev/) 3.15,
+- Stack: Python 3.11+ (developed on 3.13), [aiogram](https://docs.aiogram.dev/) 3.31,
   python-dotenv.
 - Persistence: `<DATA_DIR>/absences.jsonl` (append-only absence journal) and
   `<DATA_DIR>/members.json` (group roster). No DB.

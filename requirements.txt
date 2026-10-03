@@ -1,5 +1,5 @@
 aiofiles==24.1.0
-aiogram==3.15.0
+aiogram==3.31.0
 aiohappyeyeballs==2.7.1
 aiohttp==3.10.11
 aiosignal==1.4.0
@@ -11,8 +11,9 @@ idna==3.20
 magic-filter==1.0.12
 multidict==6.9.1
 propcache==0.5.4
-pydantic==2.9.2
-pydantic_core==2.23.4
+pydantic==2.13.5
+pydantic_core==2.46.5
 python-dotenv==1.0.1
+typing-inspection==0.4.4
 typing_extensions==4.16.0
 yarl==1.25.1
