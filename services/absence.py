@@ -22,11 +22,11 @@ REASON_OTHER = "other"
 # 7 reasons: order and emoji match the keyboard.
 REASONS: list[tuple[str, str]] = [
     ("illness", "💊 Хвороба"),
-    ("academic", "🎓 Інша пара/перездача"),
-    ("event", "🏆 Змагання/виїзд"),
-    ("family", "👨‍👩‍👧 Сімейні справи"),
-    ("transport", "🚇 Транспорт/пробки"),
-    ("excused", "📋 Дозволена відсутність"),
+    ("family", "🏠 Сімейні обставини"),
+    ("event", "🏆 Тренування/Змагання"),
+    ("transport", "🚇 Затори"),
+    ("academic", "🎓 Справи коледжу"),
+    ("excused", "📋 З дозволу"),
     (REASON_OTHER, "✍️ Інше…"),
 ]
 

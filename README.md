@@ -288,10 +288,10 @@ Reason codes (defined in `services/absence.py`, the source of truth):
 | Code | Meaning |
 | --- | --- |
 | `illness` | 💊 Illness |
-| `academic` | 🎓 Other class / retake |
-| `event` | 🏆 Competition / trip |
-| `family` | 👨‍👩‍👧 Family matters |
-| `transport` | 🚇 Transport / traffic |
+| `family` | 🏠 Family matters |
+| `event` | 🏆 Training / competition |
+| `transport` | 🚇 Traffic |
+| `academic` | 🎓 College matters |
 | `excused` | 📋 Excused absence |
 | `other` | ✍️ Other (free text in `reason_text`) |
 

@@ -74,10 +74,10 @@ def test_reasons_are_exactly_seven_unique_codes():
     assert len(set(codes)) == 7
     assert codes == [
         "illness",
-        "academic",
-        "event",
         "family",
+        "event",
         "transport",
+        "academic",
         "excused",
         "other",
     ]
@@ -103,7 +103,7 @@ def test_format_confirm_has_new_replaced_identical():
 
     assert text.splitlines() == [
         "📅 29.09.2026 (вт)",
-        "🔄 30.09.2026 (ср) — замінить «сімейні справи»",
+        "🔄 30.09.2026 (ср) — замінить «сімейні обставини»",
         "✅ 01.10.2026 (чт) — вже так",
         "💊 Причина: хвороба",
     ]
@@ -129,7 +129,7 @@ def test_classify_record():
 
 def test_reason_display():
     assert reason_display("illness") == "хвороба"
-    assert reason_display("excused") == "дозволена відсутність"
+    assert reason_display("excused") == "з дозволу"
     assert reason_display("other", "пробки на мосту") == "пробки на мосту"
 
 
@@ -175,8 +175,8 @@ def test_build_success_text():
 
 def test_reason_brief_known_codes():
     assert reason_brief("illness") == "💊 хвороба"
-    assert reason_brief("academic") == "🎓 інша пара/перездача"
-    assert reason_brief("event") == "🏆 змагання/виїзд"
+    assert reason_brief("academic") == "🎓 справи коледжу"
+    assert reason_brief("event") == "🏆 тренування/змагання"
 
 
 def test_reason_brief_other_with_text():
@@ -247,7 +247,7 @@ def test_format_absentee_report_exact():
         "📊 Відсутні на 03.10.2026 (сб):",
         "• Іваненко Петро — 💊 хвороба",
         "• Петренко Іван — ✍️ Інше: пробки на мосту",
-        "• Сидоренко Марія — 🏆 змагання/виїзд",
+        "• Сидоренко Марія — 🏆 тренування/змагання",
     ]
 
 
