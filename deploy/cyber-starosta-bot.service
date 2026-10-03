@@ -1,0 +1,25 @@
+[Unit]
+Description=Cyber Starosta Bot
+After=network.target
+# Bound Restart=always on fail-fast config errors: after 5 starts within 300s
+# systemd gives up instead of spinning forever.
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+# Dedicated system user: the bot has no permissions on the rest of the server.
+User=cyber-starosta
+Group=cyber-starosta
+# Data files are created with mode 640 (rw for the bot, r for the group), dirs 750.
+UMask=0027
+WorkingDirectory=/opt/cyber-starosta-bot
+EnvironmentFile=/etc/cyber-starosta-bot/env
+StateDirectory=cyber-starosta-bot
+StateDirectoryMode=0750
+ExecStart=/opt/cyber-starosta-bot/venv/bin/python bot.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

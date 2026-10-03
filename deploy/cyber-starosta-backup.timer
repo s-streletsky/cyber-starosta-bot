@@ -1,0 +1,10 @@
+[Unit]
+Description=Cyber Starosta Bot daily backup timer
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=1h
+
+[Install]
+WantedBy=timers.target

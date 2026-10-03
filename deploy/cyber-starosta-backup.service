@@ -1,0 +1,6 @@
+[Unit]
+Description=Cyber Starosta Bot daily backup
+
+[Service]
+Type=oneshot
+ExecStart=/opt/cyber-starosta-bot/deploy/backup.sh
