@@ -6,12 +6,13 @@ from typing import Awaitable, Callable
 
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.base import StorageKey
-from aiogram.types import ErrorEvent, Update, User
+from aiogram.types import BotCommand, ErrorEvent, Update, User
 
 import texts
 from config import ADMIN_USER_IDS, BOT_TOKEN, DATA_DIR
 from handlers.absence import router as absence_router
 from handlers.admin import router as admin_router
+from handlers.help import router as help_router
 from handlers.log_helpers import user_tag
 from handlers.middleware import AccessControlMiddleware
 from handlers.notify import notify_safe
@@ -20,6 +21,7 @@ from handlers.reply_menu import menu_for
 from handlers.report import router as report_router
 from handlers.start import router as start_router
 from keyboards.menu import menu_keyboard
+from services.help import open_commands
 from services.members import is_active_group_lead, is_admin
 from storage import Storage, StorageCorruptError
 
@@ -128,24 +130,48 @@ def make_error_handler(
     return on_error
 
 
+def include_routers(dp: Dispatcher) -> None:
+    """Register routers in production order: /help first, absence catch-all last."""
+    dp.include_router(help_router)
+    dp.include_router(start_router)
+    dp.include_router(pending_router)
+    dp.include_router(admin_router)
+    dp.include_router(report_router)
+    dp.include_router(absence_router)
+
+
+def build_dispatcher() -> Dispatcher:
+    """Composition root: ACL middleware + routers in production order."""
+    dp = Dispatcher()
+    dp.update.outer_middleware(AccessControlMiddleware())
+    include_routers(dp)
+    return dp
+
+
+async def set_commands_menu(bot: Bot) -> None:
+    """Register the open commands in Telegram's command menu (best effort)."""
+    commands = [
+        BotCommand(command=entry.command, description=entry.description)
+        for entry in open_commands()
+    ]
+    try:
+        await bot.set_my_commands(commands)
+    except Exception:
+        logger.warning("Failed to set bot commands menu", exc_info=True)
+
+
 async def main() -> None:
     bot = Bot(token=BOT_TOKEN)
-    dp = Dispatcher()
+    dp = build_dispatcher()
 
     storage = Storage(DATA_DIR)
     dp.workflow_data["storage"] = storage
     logger.info("DATA_DIR=%s", DATA_DIR)
     await _warn_if_head_lead_inactive(storage)
 
-    dp.update.outer_middleware(AccessControlMiddleware())
-    dp.errors.register(make_error_handler(bot, storage, dp))
+    await set_commands_menu(bot)
 
-    # Order matters: the absence router holds the catch-all stale handler and goes last.
-    dp.include_router(start_router)
-    dp.include_router(pending_router)
-    dp.include_router(admin_router)
-    dp.include_router(report_router)
-    dp.include_router(absence_router)
+    dp.errors.register(make_error_handler(bot, storage, dp))
 
     await dp.start_polling(bot)
 

@@ -241,12 +241,16 @@ in a future update.
 3. The recipient taps `✅ Accept` or `❌ Reject`. An approved student gets the menu
    and can mark absences.
 4. Commands:
+   - `/help` — show every command available to your role.
    - `/pending` — list of pending requests (group leads and admins).
    - `/sethead` — choose the head lead: the recipient of new request cards.
    - `/promote` — grant a role (👑 Group Lead or 🎓 Supervisor) via buttons.
    - `/demote` — remove a role from a person.
    - `/remove` — close access (past records are kept; the person can re-apply).
    - `/cancel` — cancel the free-text reason step of the absence flow.
+
+   The Telegram command menu shows only `/start` and `/help`; the full
+   role-filtered list is available via `/help`.
 
 External edits to `members.json` (e.g. fixing a `display_name`) are picked up on
 the next read: the bot only updates `username` on repeated `/start`, never
@@ -369,8 +373,8 @@ Permission denied.
 bot.py            Entry point: Bot/Dispatcher, middleware, error handler, polling
 config.py         Env loading and fail-fast validation
 storage.py        File persistence (append-only journal + atomic roster), one lock
-services/         Pure business logic (no aiogram): members, absence
-handlers/         aiogram routers: start, pending, admin, absence, reply_menu,
+services/         Pure business logic (no aiogram): members, absence, help
+handlers/         aiogram routers: start, help, pending, admin, absence, reply_menu,
                   notify, middleware, log_helpers
 keyboards/        Keyboards built from service predicates
 callbacks.py      CallbackData factories and action constants

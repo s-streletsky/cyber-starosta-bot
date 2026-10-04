@@ -2,10 +2,12 @@
 
 import logging
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 from aiogram.fsm.storage.base import StorageKey
 
-from bot import _fsm_key, _update_user, _warn_if_head_lead_inactive
+import texts
+from bot import _fsm_key, _update_user, _warn_if_head_lead_inactive, set_commands_menu
 from services.members import ROLE_GROUP_LEAD
 from storage import MEMBER_APPROVED, Storage
 from tests.fakes import make_update as _update
@@ -83,5 +85,26 @@ async def test_warn_if_head_lead_inactive_warns_for_non_group_lead(tmp_path, cap
 
     with caplog.at_level(logging.WARNING, logger="bot"):
         await _warn_if_head_lead_inactive(storage)
+
+    assert any(record.levelno == logging.WARNING for record in caplog.records)
+
+
+async def test_set_commands_menu_registers_open_commands():
+    bot = SimpleNamespace(set_my_commands=AsyncMock())
+
+    await set_commands_menu(bot)
+
+    bot.set_my_commands.assert_awaited_once()
+    commands = bot.set_my_commands.await_args.args[0]
+    assert [command.command for command in commands] == ["start", "help"]
+    assert commands[0].description == texts.HELP_CMD_START
+    assert commands[1].description == texts.HELP_CMD_HELP
+
+
+async def test_set_commands_menu_swallows_errors_and_warns(caplog):
+    bot = SimpleNamespace(set_my_commands=AsyncMock(side_effect=RuntimeError("boom")))
+
+    with caplog.at_level(logging.WARNING, logger="bot"):
+        await set_commands_menu(bot)
 
     assert any(record.levelno == logging.WARNING for record in caplog.records)

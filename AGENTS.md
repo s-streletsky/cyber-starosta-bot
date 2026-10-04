@@ -37,14 +37,15 @@
   `StorageCorruptError` instead of overwriting. `bot.py` alerts all env admins once
   per process on the first `StorageCorruptError`.
 - `services/` — pure business logic, no aiogram: `members.py` (validation, rights),
-  `absence.py` (days, reasons, summary).
-- `handlers/` — aiogram routers: `start`, `pending`, `admin`, `report`,
+  `absence.py` (days, reasons, summary), `help.py` (role-filtered `/help` catalog).
+- `handlers/` — aiogram routers: `start`, `help`, `pending`, `admin`, `report`,
   `absence`, `reply_menu`, `notify`, `middleware`, `log_helpers` (orchestration
   only, no business logic).
 - `keyboards/` — keyboards built from `services` predicates and domain tables
   (`services.members`, `services.absence.REASONS`).
 - `callbacks.py` — CallbackData factories (no raw strings in handlers).
-- `bot.py` — composition root (DI storage via `dp.workflow_data`).
+- `bot.py` — composition root (`build_dispatcher()` wires the ACL middleware + routers
+  in one shared path for production and integration tests; DI storage via `dp.workflow_data`).
 - `texts.py` — all user-facing strings (Ukrainian), except domain label tables
   that live in `services` (`REASONS`, `_REASON_LABELS`, `_WEEKDAYS`, `_DAY_PREFIXES`,
   `_ROLE_NAMES` — tied to business logic and ordering).
@@ -58,6 +59,16 @@ Dependencies: handlers → services → storage. No reverse deps.
   `pending`, `middleware` and `notify`).
   `handlers/report.py` uses `services.members`, `services.absence`,
   `keyboards.report` and `storage` only — it adds no handler-to-handler edge.
+  `services/help.py` uses `texts` and `services.members` (new intra-service edge
+  `help → members`); `handlers/help.py` uses `services.help`, `services.members`
+  and `storage` (no handler-to-handler edge). `handlers/middleware.py` imports
+  `services.help.OPEN_COMMANDS` (new edge `middleware → services.help`): the
+  open-to-everyone message set is derived from the catalog's `AUDIENCE_ALL`
+  entries instead of hardcoding `/start` and `/help`.
+  `services/help.py` `AUDIENCE_MANAGER` uses the approval-aware
+  `services.members.is_active_group_lead`, so pending/removed group leads do not
+  see `/pending` in `/help`; `handlers/pending.py`'s `_is_manager` keeps
+  `services.members.can_process_requests` as the runtime guard after ACL admission.
 `services`/`handlers` use `storage` constants (`MEMBER_APPROVED`, `ROLE_*`, `ABSENCE_*`)
   and pure helpers (e.g. `is_identical_absence` used in `services/absence.py`;
   `is_deleted` used only inside `storage.py`), `handlers/pending.py` also

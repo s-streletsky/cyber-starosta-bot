@@ -20,7 +20,7 @@ from handlers.log_helpers import user_tag
 from handlers.notify import notify_safe
 from keyboards.approvals import request_keyboard
 from keyboards.menu import role_keyboard
-from services.members import can_manage, is_active_group_lead, is_admin
+from services.members import can_process_requests, is_active_group_lead, is_admin
 from storage import MEMBER_PENDING, RESULT_APPROVED, RESULT_REJECTED, Storage
 
 logger = logging.getLogger(__name__)
@@ -85,8 +85,7 @@ async def send_request_card(
 async def _is_manager(storage: Storage, user_id: int) -> bool:
     if is_admin(user_id):
         return True
-    member = await storage.get_member(user_id)
-    return can_manage(member)
+    return can_process_requests(await storage.get_member(user_id), False)
 
 
 @router.message(Command("pending"))

@@ -127,6 +127,18 @@ DELETE_PAST_REJECTED = "Минулі записи видалити не можн
 LIMIT_REACHED = "🚫 Досягнуто ліміт змін ({limit}) для: {dates}"
 LIMIT_REACHED_PARTIAL = "🚫 Ліміт змін вичерпано для: {dates} (макс. {limit} на день)"
 
+# --- /help ---
+HELP_TITLE = "🤖 Доступні команди"
+HELP_LINE = "/{command} — {description}"
+HELP_CMD_START = "запустити бота та подати заявку"
+HELP_CMD_HELP = "показати цю довідку"
+HELP_CMD_CANCEL = "скасувати введення причини під час відмітки"
+HELP_CMD_PENDING = "переглянути заявки на вступ"
+HELP_CMD_PROMOTE = "призначити роль"
+HELP_CMD_DEMOTE = "зняти роль"
+HELP_CMD_REMOVE = "закрити доступ"
+HELP_CMD_SETHEAD = "призначити головного старосту"
+
 
 def brand_greeting(user_id: int) -> str:
     """Greeting for /start with the brand name from config."""

@@ -84,8 +84,13 @@ def member_label(member: dict) -> str:
 
 
 def can_manage(member: dict | None) -> bool:
-    """Right to process requests: group_lead (env admin is checked separately)."""
+    """Whether the roster entry holds the group_lead role."""
     return has_role(member, ROLE_GROUP_LEAD)
+
+
+def can_process_requests(member: dict | None, is_admin: bool) -> bool:
+    """Who may process join requests: env admin or a group_lead."""
+    return is_admin or can_manage(member)
 
 
 def is_active_group_lead(member: dict | None) -> bool:

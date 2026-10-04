@@ -1,4 +1,4 @@
-"""ACL by roles and statuses: /start and onboarding are open to all, the rest — approved."""
+"""ACL by role/status: catalog-open commands, onboarding, then admitted members."""
 
 import logging
 from typing import Any, Awaitable, Callable, Dict
@@ -9,17 +9,22 @@ from aiogram.types import Update
 import texts
 from handlers.log_helpers import user_tag
 from handlers.start import is_onboarding_state
+from services.help import OPEN_COMMANDS
 from services.members import is_admin, is_approved
 
 logger = logging.getLogger(__name__)
 
 
-def is_start_command(text: str | None) -> bool:
-    """True for messages starting with /start (including /start@my_bot)."""
+def is_open_command(text: str | None) -> bool:
+    """True for an open /command (from the catalog), including /command@bot."""
     if not text:
         return False
-    first_word = text.strip().split(maxsplit=1)[0]
-    return first_word.split("@", 1)[0] == "/start"
+    stripped = text.strip()
+    if not stripped:
+        return False
+    command = stripped.split(maxsplit=1)[0].split("@", 1)[0]
+    # Exactly one leading slash, matching the aiogram Command filter semantics.
+    return command.startswith("/") and command[1:] in OPEN_COMMANDS
 
 
 async def _allow(
@@ -52,11 +57,13 @@ class AccessControlMiddleware(BaseMiddleware):
         storage = data.get("storage")
         bot = data.get("bot")
 
-        # The only message open to everyone: /start.
-        if event.message and is_start_command(event.message.text):
+        # The only messages open to everyone: the commands the /help catalog marks
+        # AUDIENCE_ALL (an intentional ACL exception; every other command requires
+        # admission).
+        if event.message and is_open_command(event.message.text):
             return await _allow(
                 handler, event, data, bot, storage, user_id, user,
-                "Allow /start for user %s",
+                "Allow open command for user %s",
             )
 
         # Onboarding full-name text: request not approved yet, but the name must be allowed.
