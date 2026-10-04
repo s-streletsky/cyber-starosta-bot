@@ -19,7 +19,7 @@ from services.absence import REASONS
 
 
 def day_keyboard(days: list[dict], selected: set[str]) -> InlineKeyboardMarkup:
-    """One day per row (✅ on selected), below — "Next" and "Cancel"."""
+    """One day per row (✅ on selected), below — a shared row "Cancel" and "Next"."""
     rows: list[list[InlineKeyboardButton]] = []
     for entry in days:
         key = entry["day"].isoformat()
@@ -35,24 +35,20 @@ def day_keyboard(days: list[dict], selected: set[str]) -> InlineKeyboardMarkup:
     rows.append(
         [
             InlineKeyboardButton(
-                text=texts.BUTTON_NEXT,
-                callback_data=DayCtl(action=ACTION_NEXT).pack(),
-            )
-        ]
-    )
-    rows.append(
-        [
-            InlineKeyboardButton(
                 text=texts.BUTTON_CANCEL,
                 callback_data=DayCtl(action=ACTION_CANCEL).pack(),
-            )
+            ),
+            InlineKeyboardButton(
+                text=texts.BUTTON_NEXT,
+                callback_data=DayCtl(action=ACTION_NEXT).pack(),
+            ),
         ]
     )
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def reason_keyboard() -> InlineKeyboardMarkup:
-    """Reasons 2 per row, below — a shared row "Back" and "Cancel"."""
+    """Reasons 2 per row, below — a shared row "Cancel" and "Back"."""
     rows: list[list[InlineKeyboardButton]] = []
     for start in range(0, len(REASONS), 2):
         rows.append(
@@ -67,12 +63,12 @@ def reason_keyboard() -> InlineKeyboardMarkup:
     rows.append(
         [
             InlineKeyboardButton(
-                text=texts.BUTTON_BACK,
-                callback_data=ReasonCb(code=ACTION_BACK).pack(),
-            ),
-            InlineKeyboardButton(
                 text=texts.BUTTON_CANCEL,
                 callback_data=DayCtl(action=ACTION_CANCEL).pack(),
+            ),
+            InlineKeyboardButton(
+                text=texts.BUTTON_BACK,
+                callback_data=ReasonCb(code=ACTION_BACK).pack(),
             ),
         ]
     )
@@ -92,15 +88,13 @@ def confirm_keyboard(has_replaced: bool) -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(
-                    text=texts.BUTTON_BACK,
-                    callback_data=ConfirmCb(action=ACTION_BACK).pack(),
-                )
-            ],
-            [
-                InlineKeyboardButton(
                     text=texts.BUTTON_CANCEL,
                     callback_data=DayCtl(action=ACTION_CANCEL).pack(),
-                )
+                ),
+                InlineKeyboardButton(
+                    text=texts.BUTTON_BACK,
+                    callback_data=ConfirmCb(action=ACTION_BACK).pack(),
+                ),
             ],
         ]
     )
@@ -121,7 +115,7 @@ def back_keyboard() -> InlineKeyboardMarkup:
 
 
 def delete_confirm_keyboard() -> InlineKeyboardMarkup:
-    """Delete / Back / Cancel for the deletion confirmation step."""
+    """Delete on its own row, below — a shared row "Cancel" and "Back"."""
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -132,15 +126,13 @@ def delete_confirm_keyboard() -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(
-                    text=texts.BUTTON_BACK,
-                    callback_data=DeleteCb(action=ACTION_BACK).pack(),
-                )
-            ],
-            [
-                InlineKeyboardButton(
                     text=texts.BUTTON_CANCEL,
                     callback_data=DayCtl(action=ACTION_CANCEL).pack(),
-                )
+                ),
+                InlineKeyboardButton(
+                    text=texts.BUTTON_BACK,
+                    callback_data=DeleteCb(action=ACTION_BACK).pack(),
+                ),
             ],
         ]
     )

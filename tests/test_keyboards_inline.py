@@ -46,66 +46,74 @@ def test_day_keyboard_round_trips_and_labels():
         {"day": date(2026, 10, 2), "label": "Завтра, 02.10 (пт)"},
     ]
 
-    markup = day_keyboard(days, {"2026-10-01"})
-    buttons = _buttons(markup)
+    rows = day_keyboard(days, {"2026-10-01"}).inline_keyboard
 
-    assert buttons[0].text == texts.DAY_MARKER_SELECTED + days[0]["label"]
-    assert DayCb.unpack(buttons[0].callback_data).date == "2026-10-01"
-    assert buttons[1].text == texts.DAY_MARKER_UNSELECTED + days[1]["label"]
-    assert DayCb.unpack(buttons[1].callback_data).date == "2026-10-02"
-    assert buttons[2].text == texts.BUTTON_NEXT
-    assert DayCtl.unpack(buttons[2].callback_data).action == ACTION_NEXT
-    assert buttons[3].text == texts.BUTTON_CANCEL
-    assert DayCtl.unpack(buttons[3].callback_data).action == ACTION_CANCEL
+    assert rows[0][0].text == texts.DAY_MARKER_SELECTED + days[0]["label"]
+    assert DayCb.unpack(rows[0][0].callback_data).date == "2026-10-01"
+    assert rows[1][0].text == texts.DAY_MARKER_UNSELECTED + days[1]["label"]
+    assert DayCb.unpack(rows[1][0].callback_data).date == "2026-10-02"
+
+    assert len(rows) == 3
+    control = rows[-1]
+    assert [button.text for button in control] == [texts.BUTTON_CANCEL, texts.BUTTON_NEXT]
+    assert DayCtl.unpack(control[0].callback_data).action == ACTION_CANCEL
+    assert DayCtl.unpack(control[1].callback_data).action == ACTION_NEXT
 
 
 def test_reason_keyboard_round_trips_and_labels():
-    buttons = _buttons(reason_keyboard())
+    markup = reason_keyboard()
+    rows = markup.inline_keyboard
     reason_codes = [code for code, _ in REASONS]
 
-    reason_buttons = buttons[: len(REASONS)]
+    reason_buttons = _buttons(markup)[: len(REASONS)]
     assert [button.text for button in reason_buttons] == [label for _, label in REASONS]
     assert [ReasonCb.unpack(button.callback_data).code for button in reason_buttons] == reason_codes
 
-    assert buttons[-2].text == texts.BUTTON_BACK
-    assert ReasonCb.unpack(buttons[-2].callback_data).code == ACTION_BACK
-    assert buttons[-1].text == texts.BUTTON_CANCEL
-    assert DayCtl.unpack(buttons[-1].callback_data).action == ACTION_CANCEL
+    reason_rows = rows[:-1]
+    assert len(reason_rows) == (len(REASONS) + 1) // 2
+    assert all(len(row) == 2 for row in reason_rows[:-1])
+    assert len(reason_rows[-1]) == (1 if len(REASONS) % 2 else 2)
+
+    control = rows[-1]
+    assert [button.text for button in control] == [texts.BUTTON_CANCEL, texts.BUTTON_BACK]
+    assert DayCtl.unpack(control[0].callback_data).action == ACTION_CANCEL
+    assert ReasonCb.unpack(control[1].callback_data).code == ACTION_BACK
 
 
 def test_confirm_keyboard_send_and_back():
-    buttons = _buttons(confirm_keyboard(has_replaced=False))
+    rows = confirm_keyboard(has_replaced=False).inline_keyboard
 
-    assert buttons[0].text == texts.BUTTON_SEND
-    assert ConfirmCb.unpack(buttons[0].callback_data).action == ACTION_SEND
-    assert buttons[1].text == texts.BUTTON_BACK
-    assert ConfirmCb.unpack(buttons[1].callback_data).action == ACTION_BACK
-    assert buttons[2].text == texts.BUTTON_CANCEL
-    assert DayCtl.unpack(buttons[2].callback_data).action == ACTION_CANCEL
+    assert [button.text for button in rows[0]] == [texts.BUTTON_SEND]
+    assert ConfirmCb.unpack(rows[0][0].callback_data).action == ACTION_SEND
+    assert [button.text for button in rows[1]] == [texts.BUTTON_CANCEL, texts.BUTTON_BACK]
+    assert DayCtl.unpack(rows[1][0].callback_data).action == ACTION_CANCEL
+    assert ConfirmCb.unpack(rows[1][1].callback_data).action == ACTION_BACK
+    assert len(rows) == 2
 
 
 def test_confirm_keyboard_uses_replace_label_when_needed():
-    buttons = _buttons(confirm_keyboard(has_replaced=True))
+    rows = confirm_keyboard(has_replaced=True).inline_keyboard
 
-    assert buttons[0].text == texts.BUTTON_SEND_REPLACE
+    assert rows[0][0].text == texts.BUTTON_SEND_REPLACE
 
 
 def test_back_keyboard_round_trips():
-    buttons = _buttons(back_keyboard())
+    rows = back_keyboard().inline_keyboard
 
-    assert buttons[0].text == texts.BUTTON_BACK
-    assert ConfirmCb.unpack(buttons[0].callback_data).action == ACTION_BACK
+    assert len(rows) == 1
+    assert rows[0][0].text == texts.BUTTON_BACK
+    assert ConfirmCb.unpack(rows[0][0].callback_data).action == ACTION_BACK
 
 
 def test_delete_confirm_keyboard_round_trips():
-    buttons = _buttons(delete_confirm_keyboard())
+    rows = delete_confirm_keyboard().inline_keyboard
 
-    assert buttons[0].text == texts.BUTTON_DELETE
-    assert DeleteCb.unpack(buttons[0].callback_data).action == DELETE_CONFIRM
-    assert buttons[1].text == texts.BUTTON_BACK
-    assert DeleteCb.unpack(buttons[1].callback_data).action == ACTION_BACK
-    assert buttons[2].text == texts.BUTTON_CANCEL
-    assert DayCtl.unpack(buttons[2].callback_data).action == ACTION_CANCEL
+    assert [button.text for button in rows[0]] == [texts.BUTTON_DELETE]
+    assert DeleteCb.unpack(rows[0][0].callback_data).action == DELETE_CONFIRM
+    assert [button.text for button in rows[1]] == [texts.BUTTON_CANCEL, texts.BUTTON_BACK]
+    assert DayCtl.unpack(rows[1][0].callback_data).action == ACTION_CANCEL
+    assert DeleteCb.unpack(rows[1][1].callback_data).action == ACTION_BACK
+    assert len(rows) == 2
 
 
 def test_person_list_keyboard_round_trips_and_marks_head_lead():
