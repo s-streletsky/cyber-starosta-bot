@@ -8,11 +8,10 @@ test (tests/test_help_catalog.py) uses `ast` to collect real handler commands.
 from typing import Callable, NamedTuple
 
 import texts
-from services.members import can_mark_absence, is_active_group_lead
+from services.members import is_active_group_lead
 
 # Audience codes: which rights predicate decides visibility of a command.
 AUDIENCE_ALL = "all"
-AUDIENCE_ABSENCE = "absence"
 AUDIENCE_MANAGER = "manager"
 AUDIENCE_ADMIN = "admin"
 
@@ -28,7 +27,7 @@ class HelpCommand(NamedTuple):
 HELP_COMMANDS: list[HelpCommand] = [
     HelpCommand("start", texts.HELP_CMD_START, AUDIENCE_ALL),
     HelpCommand("help", texts.HELP_CMD_HELP, AUDIENCE_ALL),
-    HelpCommand("cancel", texts.HELP_CMD_CANCEL, AUDIENCE_ABSENCE),
+    HelpCommand("cancel", texts.HELP_CMD_CANCEL, AUDIENCE_ALL),
     HelpCommand("pending", texts.HELP_CMD_PENDING, AUDIENCE_MANAGER),
     HelpCommand("promote", texts.HELP_CMD_PROMOTE, AUDIENCE_ADMIN),
     HelpCommand("demote", texts.HELP_CMD_DEMOTE, AUDIENCE_ADMIN),
@@ -50,7 +49,6 @@ OPEN_COMMANDS: frozenset[str] = frozenset(entry.command for entry in open_comman
 # already-resolved env-admin flag, and uses only the services.members predicates.
 _PREDICATES: dict[str, Callable[[dict | None, bool], bool]] = {
     AUDIENCE_ALL: lambda member, is_admin: True,
-    AUDIENCE_ABSENCE: lambda member, is_admin: can_mark_absence(member, is_admin),
     AUDIENCE_MANAGER: lambda member, is_admin: is_admin or is_active_group_lead(member),
     AUDIENCE_ADMIN: lambda member, is_admin: is_admin,
 }

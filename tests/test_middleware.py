@@ -25,8 +25,8 @@ def test_similar_states_do_not_match():
     assert is_onboarding_state("AbsenceForm:day") is False
 
 
-def test_open_commands_policy_is_exactly_start_and_help():
-    assert OPEN_COMMANDS == {"start", "help"}
+def test_open_commands_policy_is_start_help_and_cancel():
+    assert OPEN_COMMANDS == {"start", "help", "cancel"}
 
 
 def test_open_commands_derived_from_catalog_audience_all():
@@ -37,7 +37,17 @@ def test_open_commands_derived_from_catalog_audience_all():
 
 @pytest.mark.parametrize(
     "text",
-    ["/start", "/start@my_bot", "/help", "/help@my_bot", "  /help  ", "/start extra", "/help x"],
+    [
+        "/start",
+        "/start@my_bot",
+        "/help",
+        "/help@my_bot",
+        "/cancel",
+        "/cancel@my_bot",
+        "  /help  ",
+        "/start extra",
+        "/help x",
+    ],
 )
 def test_is_open_command_true(text):
     assert is_open_command(text) is True

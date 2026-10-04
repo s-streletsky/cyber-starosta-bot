@@ -12,6 +12,7 @@ import texts
 from config import ADMIN_USER_IDS, BOT_TOKEN, DATA_DIR
 from handlers.absence import router as absence_router
 from handlers.admin import router as admin_router
+from handlers.cancel import router as cancel_router
 from handlers.help import router as help_router
 from handlers.log_helpers import user_tag
 from handlers.middleware import AccessControlMiddleware
@@ -131,7 +132,8 @@ def make_error_handler(
 
 
 def include_routers(dp: Dispatcher) -> None:
-    """Register routers in production order: /help first, absence catch-all last."""
+    """Register routers in production order: /cancel first, absence catch-all last."""
+    dp.include_router(cancel_router)
     dp.include_router(help_router)
     dp.include_router(start_router)
     dp.include_router(pending_router)

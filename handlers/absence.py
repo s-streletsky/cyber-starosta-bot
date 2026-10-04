@@ -4,7 +4,6 @@ from datetime import date, datetime
 from typing import Any
 
 from aiogram import F, Router
-from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
@@ -276,17 +275,6 @@ async def choose_reason(
     await _render(callback, await _confirm_step_view(state, storage, callback.from_user.id))
 
 
-@router.message(AbsenceForm.other_text, Command("cancel"))
-async def cancel_other_text(message: Message, state: FSMContext, storage: Storage) -> None:
-    """/cancel at the free-text step — reset."""
-    user = message.from_user
-    if user is None:
-        return
-    await state.clear()
-    keyboard = await menu_for(storage, user.id, is_env_admin(user.id))
-    await message.answer(texts.CANCELLED, reply_markup=keyboard)
-
-
 @router.message(
     AbsenceForm.other_text,
     F.text,
@@ -315,6 +303,35 @@ async def receive_other_text(message: Message, state: FSMContext, storage: Stora
     await state.set_state(AbsenceForm.confirm)
     text, keyboard = await _confirm_step_view(state, storage, user.id)
     await message.answer(text, reply_markup=keyboard)
+
+
+@router.message(
+    AbsenceForm.day,
+    F.text,
+    ~F.text.in_({texts.MENU_ABSENCE, texts.MENU_DELETE, texts.MENU_REPORTS}),
+)
+async def day_text_hint(message: Message, state: FSMContext) -> None:
+    """Plain text at the day step: re-show the picker with a hint."""
+    user = message.from_user
+    if user is None:
+        return
+    text, keyboard = await _day_step_view(state)
+    await message.answer(f"{texts.DAY_PICK_HINT}\n\n{text}", reply_markup=keyboard)
+
+
+@router.message(
+    AbsenceForm.reason,
+    F.text,
+    ~F.text.in_({texts.MENU_ABSENCE, texts.MENU_DELETE, texts.MENU_REPORTS}),
+)
+async def reason_text_hint(message: Message, state: FSMContext) -> None:
+    """Plain text at the reason step: re-show the picker with a hint."""
+    user = message.from_user
+    if user is None:
+        return
+    dates = _selected_days(await state.get_data())
+    text, keyboard = _reason_step_view(dates)
+    await message.answer(f"{texts.REASON_PICK_HINT}\n\n{text}", reply_markup=keyboard)
 
 
 @router.callback_query(AbsenceForm.confirm, ConfirmCb.filter(F.action == ACTION_BACK))

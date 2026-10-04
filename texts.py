@@ -94,12 +94,15 @@ BUTTON_SEND_REPLACE = "✅ Замінити та надіслати"
 
 # --- "I will be absent" flow ---
 DAY_PROMPT = "Познач дні, коли тебе не буде (можна кілька).\nОбрано: {count}"
+DAY_PICK_HINT = "Познач дні зі списку нижче"
 ALERT_PICK_DAY = "Спочатку познач день"
 REASON_PROMPT = "📅 Обрано: {dates}\n\nПричина пропуску:"
+REASON_PICK_HINT = "Обери причину зі списку нижче"
 OTHER_TEXT_PROMPT = "Напиши причину своїми словами (до {limit} символів).\nДля скасування — /cancel"
 OTHER_TEXT_EMPTY = "Порожньо — напиши причину текстом (до {limit} символів)"
 OTHER_TEXT_TOO_LONG = "Причина занадто довга (макс. {limit})"
 CANCELLED = "Скасовано"
+NOTHING_TO_CANCEL = "Немає активної дії"
 CONFIRM_NEW_LINE = "📅 {date} ({weekday})"
 CONFIRM_REPLACED_LINE = "🔄 {date} ({weekday}) — замінить «{old_reason}»"
 CONFIRM_IDENTICAL_LINE = "✅ {date} ({weekday}) — вже так"
@@ -131,13 +134,13 @@ LIMIT_REACHED_PARTIAL = "🚫 Ліміт змін вичерпано для: {da
 HELP_TITLE = "🤖 Доступні команди"
 HELP_LINE = "/{command} — {description}"
 HELP_CMD_START = "запустити бота та подати заявку"
-HELP_CMD_HELP = "показати цю довідку"
-HELP_CMD_CANCEL = "скасувати введення причини під час відмітки"
+HELP_CMD_HELP = "показати довідку"
 HELP_CMD_PENDING = "переглянути заявки на вступ"
 HELP_CMD_PROMOTE = "призначити роль"
 HELP_CMD_DEMOTE = "зняти роль"
 HELP_CMD_REMOVE = "закрити доступ"
 HELP_CMD_SETHEAD = "призначити головного старосту"
+HELP_CMD_CANCEL = "скасувати поточну дію"
 
 
 def brand_greeting(user_id: int) -> str:

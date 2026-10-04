@@ -15,7 +15,6 @@ import pytest
 
 import texts
 from services.help import (
-    AUDIENCE_ABSENCE,
     AUDIENCE_ADMIN,
     AUDIENCE_ALL,
     AUDIENCE_MANAGER,
@@ -164,7 +163,7 @@ def test_catalog_matches_handlers():
 
 
 def test_help_entries_are_documented():
-    known_audiences = {AUDIENCE_ALL, AUDIENCE_ABSENCE, AUDIENCE_MANAGER, AUDIENCE_ADMIN}
+    known_audiences = {AUDIENCE_ALL, AUDIENCE_MANAGER, AUDIENCE_ADMIN}
     for entry in HELP_COMMANDS:
         assert entry.description
         assert entry.audience in known_audiences
@@ -183,11 +182,12 @@ def test_catalog_order_is_locked():
     ]
 
 
-def test_open_commands_are_start_and_help():
+def test_open_commands_are_start_help_and_cancel():
     commands = open_commands()
-    assert [entry.command for entry in commands] == ["start", "help"]
+    assert [entry.command for entry in commands] == ["start", "help", "cancel"]
     assert commands[0].description == texts.HELP_CMD_START
     assert commands[1].description == texts.HELP_CMD_HELP
+    assert commands[2].description == texts.HELP_CMD_CANCEL
 
 
 @pytest.mark.parametrize(

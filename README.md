@@ -247,9 +247,9 @@ in a future update.
    - `/promote` — grant a role (👑 Group Lead or 🎓 Supervisor) via buttons.
    - `/demote` — remove a role from a person.
    - `/remove` — close access (past records are kept; the person can re-apply).
-   - `/cancel` — cancel the free-text reason step of the absence flow.
+   - `/cancel` — cancel the current action (onboarding or absence marking/deletion).
 
-   The Telegram command menu shows only `/start` and `/help`; the full
+   The Telegram command menu shows only `/start`, `/help` and `/cancel`; the full
    role-filtered list is available via `/help`.
 
 External edits to `members.json` (e.g. fixing a `display_name`) are picked up on

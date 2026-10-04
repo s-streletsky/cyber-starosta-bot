@@ -55,6 +55,7 @@ class _FakeState:
         self._data: dict[str, Any] = dict(data) if data else {}
         self.cleared = False
         self.set_to: object | None = None
+        self._state: object | None = None
 
     async def get_data(self) -> dict[str, Any]:
         return dict(self._data)
@@ -64,13 +65,18 @@ class _FakeState:
 
     async def set_state(self, state: object) -> None:
         self.set_to = state
+        self._state = state
 
     async def set_data(self, data: dict[str, Any]) -> None:
         self._data = dict(data)
 
+    async def get_state(self) -> object | None:
+        return self._state
+
     async def clear(self) -> None:
         self._data = {}
         self.cleared = True
+        self._state = None
 
 
 def _reply_button_texts(markup) -> list[str]:

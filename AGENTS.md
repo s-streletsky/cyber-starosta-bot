@@ -38,9 +38,9 @@
   per process on the first `StorageCorruptError`.
 - `services/` — pure business logic, no aiogram: `members.py` (validation, rights),
   `absence.py` (days, reasons, summary), `help.py` (role-filtered `/help` catalog).
-- `handlers/` — aiogram routers: `start`, `help`, `pending`, `admin`, `report`,
-  `absence`, `reply_menu`, `notify`, `middleware`, `log_helpers` (orchestration
-  only, no business logic).
+- `handlers/` — aiogram routers: `start`, `help`, `cancel`, `pending`, `admin`,
+  `report`, `absence`, `reply_menu`, `notify`, `middleware`, `log_helpers`
+  (orchestration only, no business logic).
 - `keyboards/` — keyboards built from `services` predicates and domain tables
   (`services.members`, `services.absence.REASONS`).
 - `callbacks.py` — CallbackData factories (no raw strings in handlers).
@@ -54,9 +54,9 @@ Dependencies: handlers → services → storage. No reverse deps.
   Handler-to-handler imports are allowed for shared utilities, e.g. `start→pending`,
   `start→log_helpers`, `absence→reply_menu`, `middleware→start`,
   `middleware→log_helpers`, `pending→notify`, `pending→log_helpers`,
-  `notify→log_helpers`, `admin→notify` — document new ones here. Shared utilities:
-  `notify`, `reply_menu`, `log_helpers` (the latter imported by `bot`, `start`,
-  `pending`, `middleware` and `notify`).
+  `notify→log_helpers`, `admin→notify`, `cancel→reply_menu` — document new ones here.
+  Shared utilities: `notify`, `reply_menu`, `log_helpers` (the latter imported by
+  `bot`, `start`, `pending`, `middleware` and `notify`).
   `handlers/report.py` uses `services.members`, `services.absence`,
   `keyboards.report` and `storage` only — it adds no handler-to-handler edge.
   `services/help.py` uses `texts` and `services.members` (new intra-service edge
@@ -65,6 +65,10 @@ Dependencies: handlers → services → storage. No reverse deps.
   `services.help.OPEN_COMMANDS` (new edge `middleware → services.help`): the
   open-to-everyone message set is derived from the catalog's `AUDIENCE_ALL`
   entries instead of hardcoding `/start` and `/help`.
+  `handlers/cancel.py` is registered first (before `/help`) so the global
+  `/cancel` interrupts any FSM flow (onboarding + absence marking/deletion) and
+  clears it; `cancel` is now an `AUDIENCE_ALL` entry, so `/cancel` is in
+  `OPEN_COMMANDS` (open to everyone) and appears in the Telegram command menu.
   `services/help.py` `AUDIENCE_MANAGER` uses the approval-aware
   `services.members.is_active_group_lead`, so pending/removed group leads do not
   see `/pending` in `/help`; `handlers/pending.py`'s `_is_manager` keeps

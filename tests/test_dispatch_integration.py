@@ -213,6 +213,97 @@ async def test_help_during_absence_free_text_is_not_swallowed(dp, tmp_path, monk
     assert await storage.get_record(111, "2026-10-03") is not None
 
 
+async def test_cancel_during_onboarding_is_not_consumed_as_name(dp, tmp_path):
+    session = _FakeSession()
+    storage = Storage(tmp_path)
+    bot = _make_bot(dp, storage, session)
+
+    await dp.feed_update(bot, _message_update(1, "/start", _user(111)))
+    assert (111, texts.ONBOARDING_PROMPT) in session.sent_messages
+
+    await dp.feed_update(bot, _message_update(2, "/cancel", _user(111)))
+
+    assert (111, texts.CANCELLED) in session.sent_messages
+    # The full-name handler did not consume /cancel into a request.
+    assert not any(chat_id == ADMIN_ID for chat_id, _ in session.sent_messages)
+    assert await storage.get_member(111) is None
+
+
+async def test_cancel_during_absence_free_text_clears_flow(dp, tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "handlers.absence.build_days", lambda tz: build_days(TZ, today=date(2026, 10, 3))
+    )
+    monkeypatch.setattr("handlers.absence.current_day", lambda: date(2026, 10, 3))
+    session = _FakeSession()
+    storage = Storage(tmp_path)
+    await storage.upsert_member(111, "Студент Тестовий", "student", status=MEMBER_APPROVED)
+    bot = _make_bot(dp, storage, session)
+
+    await dp.feed_update(bot, _message_update(1, texts.MENU_ABSENCE, _user(111)))
+    await dp.feed_update(bot, _callback_update(2, "d:2026-10-03", _user(111)))
+    await dp.feed_update(bot, _callback_update(3, "dc:next", _user(111)))
+    await dp.feed_update(bot, _callback_update(4, "r:other", _user(111)))
+
+    await dp.feed_update(bot, _message_update(5, "/cancel", _user(111)))
+    assert (111, texts.CANCELLED) in session.sent_messages
+
+    # The free-text state is gone: a later plain text is not stored as a reason.
+    await dp.feed_update(bot, _message_update(6, "Захворів", _user(111)))
+    assert await storage.get_record(111, "2026-10-03") is None
+
+
+async def test_day_hint_on_plain_text_and_flow_continues(dp, tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "handlers.absence.build_days", lambda tz: build_days(TZ, today=date(2026, 10, 3))
+    )
+    session = _FakeSession()
+    storage = Storage(tmp_path)
+    await storage.upsert_member(111, "Студент Тестовий", "student", status=MEMBER_APPROVED)
+    bot = _make_bot(dp, storage, session)
+
+    await dp.feed_update(bot, _message_update(1, texts.MENU_ABSENCE, _user(111)))
+    await dp.feed_update(bot, _message_update(2, "випадковий текст", _user(111)))
+
+    assert any(
+        chat_id == 111 and text.startswith(texts.DAY_PICK_HINT)
+        for chat_id, text in session.sent_messages
+    )
+
+    # The flow survived the stray text: a day can still be selected and confirmed.
+    await dp.feed_update(bot, _callback_update(3, "d:2026-10-03", _user(111)))
+    await dp.feed_update(bot, _callback_update(4, "dc:next", _user(111)))
+    assert any(
+        chat_id == 111 and text.startswith(texts.REASON_PROMPT.split("{")[0])
+        for chat_id, text in session.edited_messages
+    )
+
+
+async def test_reason_hint_on_plain_text_and_flow_continues(dp, tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "handlers.absence.build_days", lambda tz: build_days(TZ, today=date(2026, 10, 3))
+    )
+    monkeypatch.setattr("handlers.absence.current_day", lambda: date(2026, 10, 3))
+    session = _FakeSession()
+    storage = Storage(tmp_path)
+    await storage.upsert_member(111, "Студент Тестовий", "student", status=MEMBER_APPROVED)
+    bot = _make_bot(dp, storage, session)
+
+    await dp.feed_update(bot, _message_update(1, texts.MENU_ABSENCE, _user(111)))
+    await dp.feed_update(bot, _callback_update(2, "d:2026-10-03", _user(111)))
+    await dp.feed_update(bot, _callback_update(3, "dc:next", _user(111)))
+    await dp.feed_update(bot, _message_update(4, "випадковий текст", _user(111)))
+
+    assert any(
+        chat_id == 111 and text.startswith(texts.REASON_PICK_HINT)
+        for chat_id, text in session.sent_messages
+    )
+
+    # The flow survived: a reason can still be chosen and submitted.
+    await dp.feed_update(bot, _callback_update(5, "r:illness", _user(111)))
+    await dp.feed_update(bot, _callback_update(6, "c:send", _user(111)))
+    assert await storage.get_record(111, "2026-10-03") is not None
+
+
 async def test_denied_callback_answers_access_denied(dp, tmp_path):
     session = _FakeSession()
     bot = _make_bot(dp, Storage(tmp_path), session)

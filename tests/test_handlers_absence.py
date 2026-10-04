@@ -10,11 +10,12 @@ from config import TZ
 from handlers.absence import (
     AbsenceForm,
     cancel_flow,
-    cancel_other_text,
     choose_reason,
     confirm_back,
     confirm_send,
+    day_text_hint,
     next_to_reason,
+    reason_text_hint,
     receive_other_text,
     start_absence,
     toggle_day,
@@ -255,18 +256,39 @@ async def test_choose_reason_valid(tmp_path):
     assert texts.CONFIRM_QUESTION in edit_text
 
 
-# 17. cancel_other_text: /cancel clears state, sends cancelled
+# 17. day_text_hint: plain text re-shows the day picker with a hint
 @pytest.mark.asyncio
-async def test_cancel_other_text(tmp_path):
-    storage = Storage(tmp_path)
-    msg = _FakeMessage(from_user_id=111)
+async def test_day_text_hint(tmp_path):
+    msg = _FakeMessage(from_user_id=111, text="не кнопка")
     state = _FakeState()
 
-    await cancel_other_text(msg, state, storage)
+    await day_text_hint(msg, state)
 
-    assert state.cleared
     assert len(msg.answers) == 1
-    assert texts.CANCELLED in msg.answers[0][0]
+    text, markup = msg.answers[0]
+    assert texts.DAY_PICK_HINT in text
+    assert texts.DAY_PROMPT.split("{")[0] in text
+    buttons = _inline_button_texts(markup)
+    assert texts.BUTTON_NEXT in buttons
+    assert texts.BUTTON_CANCEL in buttons
+
+
+# 17b. reason_text_hint: plain text re-shows the reason picker with a hint
+@pytest.mark.asyncio
+async def test_reason_text_hint(tmp_path):
+    msg = _FakeMessage(from_user_id=111, text="не кнопка")
+    state = _FakeState({"days": {"2026-10-01": True}})
+
+    await reason_text_hint(msg, state)
+
+    assert len(msg.answers) == 1
+    text, markup = msg.answers[0]
+    assert texts.REASON_PICK_HINT in text
+    assert texts.REASON_PROMPT.split("{")[0] in text
+    buttons = _inline_button_texts(markup)
+    assert texts.BUTTON_BACK in buttons
+    assert texts.BUTTON_CANCEL in buttons
+    assert texts.BUTTON_NEXT not in buttons
 
 
 # 18. receive_other_text valid → moves to confirm step

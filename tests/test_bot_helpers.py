@@ -96,9 +96,10 @@ async def test_set_commands_menu_registers_open_commands():
 
     bot.set_my_commands.assert_awaited_once()
     commands = bot.set_my_commands.await_args.args[0]
-    assert [command.command for command in commands] == ["start", "help"]
+    assert [command.command for command in commands] == ["start", "help", "cancel"]
     assert commands[0].description == texts.HELP_CMD_START
     assert commands[1].description == texts.HELP_CMD_HELP
+    assert commands[2].description == texts.HELP_CMD_CANCEL
 
 
 async def test_set_commands_menu_swallows_errors_and_warns(caplog):

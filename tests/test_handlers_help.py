@@ -67,10 +67,8 @@ async def test_supervisor_sees_general_only(tmp_path):
 
     text = await _help_text(storage, 111)
 
-    _assert_contains(text, ["start", "help"])
-    _assert_excludes(
-        text, ["cancel", "pending", "promote", "demote", "remove", "sethead"]
-    )
+    _assert_contains(text, ["start", "help", "cancel"])
+    _assert_excludes(text, ["pending", "promote", "demote", "remove", "sethead"])
 
 
 async def test_pending_member_sees_general_only(tmp_path):
@@ -79,19 +77,15 @@ async def test_pending_member_sees_general_only(tmp_path):
 
     text = await _help_text(storage, 111)
 
-    _assert_contains(text, ["start", "help"])
-    _assert_excludes(
-        text, ["cancel", "pending", "promote", "demote", "remove", "sethead"]
-    )
+    _assert_contains(text, ["start", "help", "cancel"])
+    _assert_excludes(text, ["pending", "promote", "demote", "remove", "sethead"])
 
 
 async def test_unknown_user_sees_general_only(tmp_path):
     text = await _help_text(Storage(tmp_path), 111)
 
-    _assert_contains(text, ["start", "help"])
-    _assert_excludes(
-        text, ["cancel", "pending", "promote", "demote", "remove", "sethead"]
-    )
+    _assert_contains(text, ["start", "help", "cancel"])
+    _assert_excludes(text, ["pending", "promote", "demote", "remove", "sethead"])
 
 
 async def test_removed_member_sees_general_only(tmp_path):
@@ -102,10 +96,8 @@ async def test_removed_member_sees_general_only(tmp_path):
 
     text = await _help_text(storage, 111)
 
-    _assert_contains(text, ["start", "help"])
-    _assert_excludes(
-        text, ["cancel", "pending", "promote", "demote", "remove", "sethead"]
-    )
+    _assert_contains(text, ["start", "help", "cancel"])
+    _assert_excludes(text, ["pending", "promote", "demote", "remove", "sethead"])
 
 
 async def test_pending_visibility_is_approval_aware(tmp_path):
