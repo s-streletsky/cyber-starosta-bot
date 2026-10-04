@@ -17,7 +17,7 @@ ERROR_REPLY = "Щось пішло не так 😔"
 MENU_ABSENCE = "🗂 Мене не буде"
 
 # --- /start ---
-START_GREETING = "{brand} — бот-помічник.\nТвій ID: {user_id}"
+START_GREETING = "{brand} — бот-помічник старости.\nТвій ID: {user_id}"
 START_IN_GROUP = "Ти в списку групи"
 START_PENDING = "⏳ Заявка вже на розгляді. Чекай підтвердження..."
 START_REQUEST_SENT = "✅ Заявка надіслана на розгляд"
@@ -32,7 +32,7 @@ REQUEST_CARD = "🆕 Заявка: {display_name} ({username}) — ID {user_id}"
 MENU_REPORTS = "📊 Вибірки"
 NOT_ALLOWED_ABSENCE = "Відмічати пропуски можуть лише студенти та старости"
 NOT_ALLOWED_REPORTS = "Вибірки доступні старості, супервайзеру та адмінам"
-ROLE_UPDATE_NOTIFY = "🔔 Твоя роль оновлена: {role}."
+ROLE_UPDATE_NOTIFY = "🔔 Твоя роль оновлена: {role}"
 ROLE_BACK_TO_STUDENT = "🔔 Роль знята — ти знову студент"
 ACCESS_CLOSED_NOTIFY = "🚫 Доступ закрито"
 
@@ -82,7 +82,7 @@ STALE_CARD = "Вже неактуально, наберіть команду с�
 # Admin alert when the roster is corrupt: writing fails, manual intervention needed.
 ADMIN_STORAGE_ALERT = (
     "⚠️ Файл учасників пошкоджено — записи не зберігаються. "
-    "Потрібне втручання адміністратора: перевірте логи."
+    "Потрібне втручання адміністратора: перевірте логи"
 )
 
 # --- shared buttons ---
@@ -98,7 +98,7 @@ DAY_PICK_HINT = "Познач дні зі списку нижче"
 ALERT_PICK_DAY = "Спочатку познач день"
 REASON_PROMPT = "📅 Обрано: {dates}\n\nПричина пропуску:"
 REASON_PICK_HINT = "Обери причину зі списку нижче"
-OTHER_TEXT_PROMPT = "Напиши причину своїми словами (до {limit} символів).\nДля скасування — /cancel"
+OTHER_TEXT_PROMPT = "Напиши причину своїми словами (до {limit} символів)"
 OTHER_TEXT_EMPTY = "Порожньо — напиши причину текстом (до {limit} символів)"
 OTHER_TEXT_TOO_LONG = "Причина занадто довга (макс. {limit})"
 CANCELLED = "Скасовано"
