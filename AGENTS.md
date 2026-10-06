@@ -37,7 +37,8 @@
   `StorageCorruptError` instead of overwriting. `bot.py` alerts all env admins once
   per process on the first `StorageCorruptError`.
 - `services/` — pure business logic, no aiogram: `members.py` (validation, rights),
-  `absence.py` (days, reasons, summary), `help.py` (role-filtered `/help` catalog).
+  `absence.py` (days, reasons, summary), `help.py` (role-filtered `/help` catalog),
+  `text.py` (newline-aware message chunking).
 - `handlers/` — aiogram routers: `start`, `help`, `cancel`, `pending`, `admin`,
   `report`, `absence`, `reply_menu`, `notify`, `middleware`, `log_helpers`
   (orchestration only, no business logic).
@@ -58,7 +59,8 @@ Dependencies: handlers → services → storage. No reverse deps.
   Shared utilities: `notify`, `reply_menu`, `log_helpers` (the latter imported by
   `bot`, `start`, `pending`, `middleware` and `notify`).
   `handlers/report.py` uses `services.members`, `services.absence`,
-  `keyboards.report` and `storage` only — it adds no handler-to-handler edge.
+  `services.text`, `keyboards.report` and `storage` only — it adds no
+  handler-to-handler edge.
   `services/help.py` uses `texts` and `services.members` (new intra-service edge
   `help → members`); `handlers/help.py` uses `services.help`, `services.members`
   and `storage` (no handler-to-handler edge). `handlers/middleware.py` imports

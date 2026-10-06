@@ -11,9 +11,12 @@ from config import TZ
 from keyboards.report import report_menu_keyboard
 from services.absence import build_absentees, format_absentee_report
 from services.members import can_view_reports, is_admin
+from services.text import split_message
 from storage import MEMBER_APPROVED, Storage
 
 router = Router()
+
+TELEGRAM_TEXT_MAX = 4096
 
 
 def current_day() -> date:
@@ -47,6 +50,10 @@ async def show_today_report(callback: CallbackQuery, storage: Storage) -> None:
     records = await storage.list_absences_for_date(day.isoformat())
     absentees = build_absentees(members, records)
     text = format_absentee_report(day, absentees)
-    if callback.message is not None:
-        await callback.message.edit_text(text)
+    chunks = split_message(text, TELEGRAM_TEXT_MAX)
+    if callback.message is not None and hasattr(callback.message, "edit_text"):
+        await callback.message.edit_text(chunks[0])
+        if hasattr(callback.message, "answer"):
+            for extra in chunks[1:]:
+                await callback.message.answer(extra)
     await callback.answer()
