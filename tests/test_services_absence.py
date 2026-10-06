@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from services.absence import (
+    REASON_TEXT_MAX,
     REASONS,
     build_absentees,
     build_days,
@@ -147,15 +148,19 @@ def test_validate_reason_text_empty_raises():
         validate_reason_text("   ")
 
 
-def test_validate_reason_text_exactly_120_kept():
-    text = "а" * 120
+def test_validate_reason_text_at_limit_kept():
+    text = "а" * REASON_TEXT_MAX
 
     assert validate_reason_text(text) == text
 
 
-def test_validate_reason_text_121_raises():
+def test_validate_reason_text_over_limit_raises():
     with pytest.raises(ValueError):
-        validate_reason_text("х" * 121)
+        validate_reason_text("х" * (REASON_TEXT_MAX + 1))
+
+
+def test_reason_text_max_is_250():
+    assert REASON_TEXT_MAX == 250
 
 
 def test_validate_reason_text_strips_padding():

@@ -31,7 +31,7 @@ REASONS: list[tuple[str, str]] = [
     (REASON_OTHER, "✍️ Інше…"),
 ]
 
-REASON_TEXT_MAX = 120
+REASON_TEXT_MAX = 250
 
 _REASON_LABELS = dict(REASONS)
 _WEEKDAYS = ("пн", "вт", "ср", "чт", "пт", "сб", "вс")
