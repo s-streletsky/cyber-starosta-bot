@@ -35,13 +35,13 @@ def test_recipient_keyboard_rows_and_markers():
 
     rows = recipient_keyboard(recipients, {"1"}).inline_keyboard
 
-    assert rows[0][0].text == texts.BROADCAST_ALL_BUTTON
-    assert BroadcastCtl.unpack(rows[0][0].callback_data).action == ACTION_ALL
+    assert rows[0][0].text == texts.BROADCAST_MARKER_SELECTED + member_label(recipients[0][1])
+    assert RecipientCb.unpack(rows[0][0].callback_data).user_id == 1
+    assert rows[1][0].text == texts.BROADCAST_MARKER_UNSELECTED + member_label(recipients[1][1])
+    assert RecipientCb.unpack(rows[1][0].callback_data).user_id == 2
 
-    assert rows[1][0].text == texts.BROADCAST_MARKER_SELECTED + member_label(recipients[0][1])
-    assert RecipientCb.unpack(rows[1][0].callback_data).user_id == 1
-    assert rows[2][0].text == texts.BROADCAST_MARKER_UNSELECTED + member_label(recipients[1][1])
-    assert RecipientCb.unpack(rows[2][0].callback_data).user_id == 2
+    assert rows[-2][0].text == texts.BROADCAST_ALL_BUTTON
+    assert BroadcastCtl.unpack(rows[-2][0].callback_data).action == ACTION_ALL
 
     control = rows[-1]
     assert [button.text for button in control] == [texts.BUTTON_CANCEL, texts.BUTTON_NEXT]
@@ -52,7 +52,7 @@ def test_recipient_keyboard_rows_and_markers():
 def test_recipient_keyboard_all_button_marks_when_all_selected():
     rows = recipient_keyboard(_recipients(), {"1", "2"}).inline_keyboard
 
-    assert rows[0][0].text == texts.BROADCAST_MARKER_SELECTED + texts.BROADCAST_ALL_BUTTON
+    assert rows[-2][0].text == texts.BROADCAST_MARKER_SELECTED + texts.BROADCAST_ALL_BUTTON
 
 
 def test_message_keyboard_predefined_custom_and_controls():

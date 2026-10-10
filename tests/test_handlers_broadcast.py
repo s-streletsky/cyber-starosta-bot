@@ -66,7 +66,7 @@ async def test_start_broadcast_opens_recipient_picker(tmp_path):
     text, markup = msg.answers[0]
     assert texts.BROADCAST_PROMPT.split("{")[0] in text
     buttons = _inline_button_texts(markup)
-    assert buttons[0] == texts.BROADCAST_ALL_BUTTON
+    assert texts.BROADCAST_ALL_BUTTON in buttons
     # The sender is never a recipient.
     assert all("Лід Групи" not in label for label in buttons)
 
@@ -150,7 +150,7 @@ async def test_recipients_text_hint_reshows_picker(tmp_path):
 
     text, markup = msg.answers[0]
     assert texts.BROADCAST_PICK_HINT in text
-    assert texts.BROADCAST_ALL_BUTTON in _inline_button_texts(markup)[0]
+    assert texts.BROADCAST_ALL_BUTTON in _inline_button_texts(markup)
 
 
 async def test_message_text_hint_reshows_picker(tmp_path):

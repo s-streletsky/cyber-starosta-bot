@@ -24,7 +24,7 @@ from services.members import member_label
 def recipient_keyboard(
     members: list[tuple[int, dict[str, Any]]], selected: set[str]
 ) -> InlineKeyboardMarkup:
-    """Row 0: «Усім студентам» (✅ when all are selected); one row per member;
+    """One row per member; then «Усім студентам» (✅ when all are selected);
     last row: a shared row «Cancel» and «Next»."""
     rows: list[list[InlineKeyboardButton]] = []
 
@@ -32,14 +32,6 @@ def recipient_keyboard(
         str(user_id) in selected for user_id, _ in members
     )
     all_marker = texts.BROADCAST_MARKER_SELECTED if all_selected else ""
-    rows.append(
-        [
-            InlineKeyboardButton(
-                text=all_marker + texts.BROADCAST_ALL_BUTTON,
-                callback_data=BroadcastCtl(action=ACTION_ALL).pack(),
-            )
-        ]
-    )
 
     for user_id, member in members:
         marker = (
@@ -55,6 +47,15 @@ def recipient_keyboard(
                 )
             ]
         )
+
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text=all_marker + texts.BROADCAST_ALL_BUTTON,
+                callback_data=BroadcastCtl(action=ACTION_ALL).pack(),
+            )
+        ]
+    )
 
     rows.append(
         [
