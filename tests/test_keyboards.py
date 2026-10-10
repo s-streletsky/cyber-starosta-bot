@@ -22,8 +22,7 @@ def test_group_lead_gets_absence_and_reports():
 
     assert _rows(markup) == [
         [texts.MENU_ABSENCE, texts.MENU_DELETE],
-        [texts.MENU_REPORTS],
-        [texts.MENU_BROADCAST],
+        [texts.MENU_BROADCAST, texts.MENU_REPORTS],
     ]
 
 
@@ -31,8 +30,7 @@ def test_supervisor_gets_reports_and_broadcast():
     markup = role_keyboard(synthetic_member([ROLE_SUPERVISOR]), is_admin=False)
 
     assert _rows(markup) == [
-        [texts.MENU_REPORTS],
-        [texts.MENU_BROADCAST],
+        [texts.MENU_BROADCAST, texts.MENU_REPORTS],
     ]
 
 
@@ -41,8 +39,7 @@ def test_admin_without_member_gets_both():
 
     assert _rows(markup) == [
         [texts.MENU_ABSENCE, texts.MENU_DELETE],
-        [texts.MENU_REPORTS],
-        [texts.MENU_BROADCAST],
+        [texts.MENU_BROADCAST, texts.MENU_REPORTS],
     ]
 
 

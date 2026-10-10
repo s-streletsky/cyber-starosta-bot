@@ -93,8 +93,8 @@ The broadcast notifications feature adds `services/broadcast.py`, `keyboards/bro
   before `absence` (which owns the global callback catch-all), so the router order is now
   `cancel, help, start, pending, admin, report, broadcast, absence`. New predicate
   `services.members.can_send_notifications(member, is_admin)` delegates to
-  `can_view_reports` and gates the reply-menu `MENU_BROADCAST` row
-  (`keyboards.menu.role_keyboard`, order `[absence, delete]`, `[reports]`, `[broadcast]`).
+  `can_view_reports` and gates the reply-menu `MENU_BROADCAST` button
+  (`keyboards.menu.role_keyboard`, order `[absence, delete]`, `[broadcast, reports]`).
   New callbacks `RecipientCb` (`br`), `BroadcastCtl` (`bc`) and `MessageCb` (`bm`); the
   send step reuses `ConfirmCb(action="send")`. `handlers/notify.py` gains `notify_many`,
   which returns `(delivered, failed)` and swallows per-recipient failures like

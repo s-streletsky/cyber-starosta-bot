@@ -15,8 +15,8 @@ def role_keyboard(member: dict | None, is_admin: bool) -> ReplyKeyboardMarkup:
     """Menu by rights:
 
     - can_mark_absence → [I will be absent, Delete an entry] share one row;
-    - can_view_reports → [Selections] on its own row;
-    - can_send_notifications → [Notifications] on its own row.
+    - can_view_reports and can_send_notifications → one management row,
+      ordered «Сповіщення» then «Вибірки».
 
     Rights come from services.members, so this module never hard-codes role names.
     """
@@ -32,10 +32,13 @@ def role_keyboard(member: dict | None, is_admin: bool) -> ReplyKeyboardMarkup:
                 KeyboardButton(text=texts.MENU_DELETE),
             ]
         )
-    if show_reports:
-        rows.append([KeyboardButton(text=texts.MENU_REPORTS)])
+    management: list[KeyboardButton] = []
     if show_notifications:
-        rows.append([KeyboardButton(text=texts.MENU_BROADCAST)])
+        management.append(KeyboardButton(text=texts.MENU_BROADCAST))
+    if show_reports:
+        management.append(KeyboardButton(text=texts.MENU_REPORTS))
+    if management:
+        rows.append(management)
     return ReplyKeyboardMarkup(
         keyboard=rows,
         resize_keyboard=True,

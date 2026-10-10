@@ -31,6 +31,6 @@ async def test_menu_for_returns_role_keyboard_on_success(tmp_path):
     assert _button_texts(markup) == [
         texts.MENU_ABSENCE,
         texts.MENU_DELETE,
-        texts.MENU_REPORTS,
         texts.MENU_BROADCAST,
+        texts.MENU_REPORTS,
     ]
