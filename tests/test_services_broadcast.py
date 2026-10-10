@@ -41,11 +41,11 @@ def test_resolve_recipients_sorts_case_insensitively_with_id_tiebreak():
 
 
 def test_is_valid_message_and_message_text():
-    assert is_valid_message("test") is True
+    assert is_valid_message("reason_reminder") is True
     assert is_valid_message("nope") is False
-    assert message_text("test") == texts.BROADCAST_TEXT
-    assert BROADCAST_MESSAGES[0].code == "test"
-    assert BROADCAST_MESSAGES[0].label == texts.BROADCAST_MSG_TEST_LABEL
+    assert message_text("reason_reminder") == texts.BROADCAST_REASON_TEXT
+    assert BROADCAST_MESSAGES[0].code == "reason_reminder"
+    assert BROADCAST_MESSAGES[0].label == texts.BROADCAST_MSG_REASON_LABEL
 
 
 @pytest.mark.parametrize("bad", ["", "   "])

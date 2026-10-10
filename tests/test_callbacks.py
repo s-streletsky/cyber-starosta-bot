@@ -102,10 +102,10 @@ def test_broadcast_ctl_callback_format():
 
 
 def test_message_callback_format():
-    assert MessageCb(code="test").pack() == "bm:test"
+    assert MessageCb(code="reason_reminder").pack() == "bm:reason_reminder"
     assert MessageCb(code="custom").pack() == "bm:custom"
     assert MessageCb(code="back").pack() == "bm:back"
-    assert MessageCb.unpack("bm:test").code == "test"
+    assert MessageCb.unpack("bm:reason_reminder").code == "reason_reminder"
 
 
 def test_broadcast_callbacks_within_64_bytes():

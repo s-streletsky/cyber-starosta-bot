@@ -194,15 +194,15 @@ async def test_choose_predefined_message_reaches_confirm(tmp_path):
     callback = _FakeCallback(111)
     state = _FakeState({"recipients": {"222": True}})
 
-    await choose_message(callback, state, storage, MessageCb(code="test"))
+    await choose_message(callback, state, storage, MessageCb(code="reason_reminder"))
 
     assert state.set_to == BroadcastForm.confirm
     data = await state.get_data()
-    assert data["message_code"] == "test"
-    assert data["message_text"] == texts.BROADCAST_TEXT
+    assert data["message_code"] == "reason_reminder"
+    assert data["message_text"] == texts.BROADCAST_REASON_TEXT
     text = callback.message.edits[0][0]
     assert texts.BROADCAST_CONFIRM_QUESTION in text
-    assert texts.BROADCAST_TEXT in text
+    assert texts.BROADCAST_REASON_TEXT in text
 
 
 async def test_choose_invalid_message_alerts_stale(tmp_path):
@@ -283,7 +283,7 @@ async def test_receive_custom_text_too_long_reprompts(tmp_path):
 
 async def test_confirm_back_returns_to_message_step(tmp_path):
     callback = _FakeCallback(111)
-    state = _FakeState({"recipients": {"222": True}, "message_text": texts.BROADCAST_TEXT})
+    state = _FakeState({"recipients": {"222": True}, "message_text": texts.BROADCAST_REASON_TEXT})
 
     await confirm_back(callback, state)
 
@@ -312,8 +312,8 @@ async def test_confirm_send_delivers_excluding_sender(tmp_path):
     state = _FakeState(
         {
             "recipients": {"222": True},
-            "message_code": "test",
-            "message_text": texts.BROADCAST_TEXT,
+            "message_code": "reason_reminder",
+            "message_text": texts.BROADCAST_REASON_TEXT,
         }
     )
 
@@ -321,7 +321,7 @@ async def test_confirm_send_delivers_excluding_sender(tmp_path):
 
     assert state.cleared
     assert bot.send_message.call_count == 1
-    assert bot.send_message.call_args[0] == (222, texts.BROADCAST_TEXT)
+    assert bot.send_message.call_args[0] == (222, texts.BROADCAST_REASON_TEXT)
     assert texts.BROADCAST_SUCCESS.format(count=1) in callback.message.answers[0][0]
 
 
@@ -330,8 +330,8 @@ async def test_confirm_send_clears_state_before_sending(tmp_path):
     state = _FakeState(
         {
             "recipients": {"222": True},
-            "message_code": "test",
-            "message_text": texts.BROADCAST_TEXT,
+            "message_code": "reason_reminder",
+            "message_text": texts.BROADCAST_REASON_TEXT,
         }
     )
     cleared_at_send: list[bool] = []
@@ -358,8 +358,8 @@ async def test_confirm_send_partial_failure_reports(tmp_path):
     state = _FakeState(
         {
             "recipients": {"222": True, "333": True},
-            "message_code": "test",
-            "message_text": texts.BROADCAST_TEXT,
+            "message_code": "reason_reminder",
+            "message_text": texts.BROADCAST_REASON_TEXT,
         }
     )
 
@@ -377,8 +377,8 @@ async def test_confirm_send_stale_selection_sends_nothing(tmp_path):
     state = _FakeState(
         {
             "recipients": {"999": True},
-            "message_code": "test",
-            "message_text": texts.BROADCAST_TEXT,
+            "message_code": "reason_reminder",
+            "message_text": texts.BROADCAST_REASON_TEXT,
         }
     )
 
@@ -398,7 +398,7 @@ async def test_confirm_send_denied_for_student(tmp_path):
     bot = AsyncMock()
     callback = _FakeCallback(111, bot=bot)
     state = _FakeState(
-        {"recipients": {"222": True}, "message_text": texts.BROADCAST_TEXT}
+        {"recipients": {"222": True}, "message_text": texts.BROADCAST_REASON_TEXT}
     )
 
     await confirm_send(callback, state, storage)

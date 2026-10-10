@@ -19,7 +19,9 @@ class BroadcastMessage(NamedTuple):
 BROADCAST_TEXT_MAX = 800
 
 BROADCAST_MESSAGES: list[BroadcastMessage] = [
-    BroadcastMessage("test", texts.BROADCAST_MSG_TEST_LABEL, texts.BROADCAST_TEXT),
+    BroadcastMessage(
+        "reason_reminder", texts.BROADCAST_MSG_REASON_LABEL, texts.BROADCAST_REASON_TEXT
+    ),
 ]
 
 _MESSAGES_BY_CODE = {message.code: message for message in BROADCAST_MESSAGES}

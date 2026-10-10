@@ -128,8 +128,8 @@ DELETE_PAST_REJECTED = "Минулі записи видалити не можн
 
 # --- broadcast notifications ---
 MENU_BROADCAST = "📣 Сповіщення"
-BROADCAST_TEXT = "Тестове повідомлення."
-BROADCAST_MSG_TEST_LABEL = "📣 Тестове повідомлення"
+BROADCAST_REASON_TEXT = "Познач, будь ласка, чому тебе сьогодні не було на парах"
+BROADCAST_MSG_REASON_LABEL = "📝 Познач причину відсутності"
 BROADCAST_CUSTOM_BUTTON = "✍️ Своє повідомлення"
 BROADCAST_PROMPT = "Обери, кому надіслати сповіщення (можна кілька).\nОбрано: {count}"
 BROADCAST_PICK_HINT = "Обери отримувачів зі списку нижче"
