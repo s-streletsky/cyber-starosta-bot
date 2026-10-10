@@ -12,6 +12,7 @@ import texts
 from config import ADMIN_USER_IDS, BOT_TOKEN, DATA_DIR
 from handlers.absence import router as absence_router
 from handlers.admin import router as admin_router
+from handlers.broadcast import router as broadcast_router
 from handlers.cancel import router as cancel_router
 from handlers.help import router as help_router
 from handlers.log_helpers import user_tag
@@ -139,6 +140,7 @@ def include_routers(dp: Dispatcher) -> None:
     dp.include_router(pending_router)
     dp.include_router(admin_router)
     dp.include_router(report_router)
+    dp.include_router(broadcast_router)
     dp.include_router(absence_router)
 
 

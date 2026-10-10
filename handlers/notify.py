@@ -29,3 +29,34 @@ async def notify_safe(
             suffix,
             exc_info=True,
         )
+
+
+async def notify_many(
+    bot: Any,
+    storage: Storage,
+    user_ids: list[int],
+    text: str,
+    *,
+    context: str = "",
+) -> tuple[int, int]:
+    """Send `text` to each recipient id; return (delivered, failed).
+
+    Per-recipient failures are logged via user_tag and never raised
+    (mirrors notify_safe).
+    """
+    delivered = 0
+    failed = 0
+    for user_id in user_ids:
+        try:
+            await bot.send_message(user_id, text)
+            delivered += 1
+        except Exception:
+            failed += 1
+            suffix = f" ({context})" if context else ""
+            logger.warning(
+                "Failed to notify %s%s",
+                await user_tag(bot, storage, user_id),
+                suffix,
+                exc_info=True,
+            )
+    return delivered, failed

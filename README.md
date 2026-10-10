@@ -22,6 +22,10 @@ lives in plain files — no database.
   reason replaces the old record; re-sending an identical record is a no-op.
 - **Admin management.** `/promote`, `/demote`, `/remove`, `/sethead` and
   `/pending` work through inline buttons — no IDs need to be typed.
+- **Broadcast notifications.** The group lead, supervisor or an admin picks
+  recipients (individually or via «👥 Усім студентам»), chooses a predefined
+  message or types their own, and confirms. The message goes to every selected
+  approved student except the sender (`📣 Сповіщення`).
 - **Crash-safe storage.** Absences are appended and fsync'd; the roster is written
   atomically (temp file + `os.replace`). A corrupt roster is snapshotted and never
   silently overwritten.
@@ -224,9 +228,9 @@ removed.
 | Role | Rights |
 | --- | --- |
 | Student (approved) | Mark own absences; `🗂 Мене не буде` |
-| Group lead (`group_lead`) | Student rights + review requests (`/pending`); can be the head lead |
-| Supervisor (`supervisor`) | Selections only (`📊 Вибірки`); **cannot** mark absences |
-| Env admin | Everything, including role management; cannot be demoted or removed |
+| Group lead (`group_lead`) | Student rights + review requests (`/pending`); can be the head lead; send notifications (`📣 Сповіщення`) |
+| Supervisor (`supervisor`) | Selections (`📊 Вибірки`) and notifications (`📣 Сповіщення`); **cannot** mark absences |
+| Env admin | Everything, including role management and notifications; cannot be demoted or removed |
 
 `📊 Вибірки` is currently a placeholder — it replies that selections will arrive
 in a future update.

@@ -8,11 +8,14 @@ import callbacks
 from callbacks import (
     AdminCb,
     ApproveCb,
+    BroadcastCtl,
     ConfirmCb,
     DayCb,
     DayCtl,
     DeleteCb,
+    MessageCb,
     ReasonCb,
+    RecipientCb,
     ReportCb,
 )
 
@@ -86,6 +89,31 @@ def test_delete_callback_within_64_bytes():
     assert len(DeleteCb(action="confirm").pack().encode()) <= 64
 
 
+def test_recipient_callback_format():
+    assert RecipientCb(user_id=123).pack() == "br:123"
+    assert RecipientCb.unpack("br:123").user_id == 123
+
+
+def test_broadcast_ctl_callback_format():
+    assert BroadcastCtl(action="all").pack() == "bc:all"
+    assert BroadcastCtl(action="next").pack() == "bc:next"
+    assert BroadcastCtl(action="cancel").pack() == "bc:cancel"
+    assert BroadcastCtl.unpack("bc:next").action == "next"
+
+
+def test_message_callback_format():
+    assert MessageCb(code="test").pack() == "bm:test"
+    assert MessageCb(code="custom").pack() == "bm:custom"
+    assert MessageCb(code="back").pack() == "bm:back"
+    assert MessageCb.unpack("bm:test").code == "test"
+
+
+def test_broadcast_callbacks_within_64_bytes():
+    assert len(RecipientCb(user_id=9999999999).pack().encode()) <= 64
+    assert len(BroadcastCtl(action="cancel").pack().encode()) <= 64
+    assert len(MessageCb(code="custom").pack().encode()) <= 64
+
+
 # --- literal/constant contract: the inline Literal strings must match the constants ---
 
 
@@ -128,4 +156,12 @@ def test_delete_literal_matches_constants():
     assert set(get_args(DeleteCb.model_fields["action"].annotation)) == {
         callbacks.DELETE_CONFIRM,
         callbacks.ACTION_BACK,
+    }
+
+
+def test_broadcast_ctl_literal_matches_constants():
+    assert set(get_args(BroadcastCtl.model_fields["action"].annotation)) == {
+        callbacks.ACTION_ALL,
+        callbacks.ACTION_NEXT,
+        callbacks.ACTION_CANCEL,
     }

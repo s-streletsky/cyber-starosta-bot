@@ -27,6 +27,10 @@ REPORT_TODAY: Final = "today"
 # --- DeleteCb.action ---
 DELETE_CONFIRM: Final = "confirm"
 
+# --- BroadcastCtl.action / MessageCb.code ---
+ACTION_ALL: Final = "all"
+ACTION_CUSTOM: Final = "custom"  # message-choice "own text"
+
 # --- shared action values: ACTION_BACK (ReasonCb.code, ConfirmCb.action);
 # ACTION_NEXT / ACTION_CANCEL (DayCtl.action) ---
 ACTION_NEXT: Final = "next"
@@ -94,3 +98,21 @@ class DeleteCb(CallbackData, prefix="dl"):
     """Deletion confirmation: «dl:confirm» / «dl:back»."""
 
     action: Literal["confirm", "back"]
+
+
+class RecipientCb(CallbackData, prefix="br"):
+    """Broadcast recipient toggle: «br:123»."""
+
+    user_id: int
+
+
+class BroadcastCtl(CallbackData, prefix="bc"):
+    """Broadcast control buttons: «bc:all» / «bc:next» / «bc:cancel»."""
+
+    action: Literal["all", "next", "cancel"]
+
+
+class MessageCb(CallbackData, prefix="bm"):
+    """Broadcast message choice: «bm:<code>», «bm:custom», «bm:back»."""
+
+    code: str

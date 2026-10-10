@@ -1,6 +1,6 @@
 """S1: server-side role ACL predicates."""
 
-from services.members import can_mark_absence, can_view_reports
+from services.members import can_mark_absence, can_send_notifications, can_view_reports
 
 
 def _member(status: str, roles: list[str]) -> dict:
@@ -31,3 +31,11 @@ def test_can_view_reports_lead_supervisor_admin():
 def test_can_view_reports_denies_student():
     assert can_view_reports(_member("approved", []), is_admin=False) is False
     assert can_view_reports(None, is_admin=False) is False
+
+
+def test_can_send_notifications_matches_reports_audience():
+    assert can_send_notifications(_member("approved", []), is_admin=False) is False
+    assert can_send_notifications(_member("approved", ["group_lead"]), is_admin=False) is True
+    assert can_send_notifications(_member("approved", ["supervisor"]), is_admin=False) is True
+    assert can_send_notifications(None, is_admin=True) is True
+    assert can_send_notifications(None, is_admin=False) is False

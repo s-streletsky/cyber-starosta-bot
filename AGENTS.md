@@ -86,6 +86,25 @@ The reply menu gets a `MENU_DELETE` button (same `can_mark_absence` right) that 
   `DeleteCb` with actions `confirm`/`back`, `keyboards.absence.delete_confirm_keyboard`).
   This adds no handler-to-handler edge: `handlers/absence.py` keeps its existing
   `absence→reply_menu` import only.
+The broadcast notifications feature adds `services/broadcast.py`, `keyboards/broadcast.py`
+  and `handlers/broadcast.py`. New handler-to-handler edges: `broadcast→notify`
+  (`notify_many`) and `broadcast→reply_menu`; new intra-service edge `broadcast→members`
+  (`member_label`, sorted recipients). `handlers/broadcast.py` is registered immediately
+  before `absence` (which owns the global callback catch-all), so the router order is now
+  `cancel, help, start, pending, admin, report, broadcast, absence`. New predicate
+  `services.members.can_send_notifications(member, is_admin)` delegates to
+  `can_view_reports` and gates the reply-menu `MENU_BROADCAST` row
+  (`keyboards.menu.role_keyboard`, order `[absence, delete]`, `[reports]`, `[broadcast]`).
+  New callbacks `RecipientCb` (`br`), `BroadcastCtl` (`bc`) and `MessageCb` (`bm`); the
+  send step reuses `ConfirmCb(action="send")`. `handlers/notify.py` gains `notify_many`,
+  which returns `(delivered, failed)` and swallows per-recipient failures like
+  `notify_safe`. The feature is a reply-menu button only — no slash command was added, so
+  `services/help.py` `HELP_COMMANDS` and its drift test are untouched. The `message`
+  step also has a plain-text hint handler (`BROADCAST_MSG_HINT`, mirroring
+  `recipients_text_hint`) — handler-local, no new edge. Role predicates
+  (`can_view_reports`/`can_send_notifications`) assume an already-admitted member:
+  `AccessControlMiddleware` is the approval gate, and approval-awareness lives only in
+  predicates that build pre-admission selectable lists (`is_active_group_lead`).
 
 ## Code conventions
 - User texts (`texts.py`) — Ukrainian; logs, comments, docstrings — English.

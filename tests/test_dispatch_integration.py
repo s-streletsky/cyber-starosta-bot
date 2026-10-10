@@ -384,6 +384,119 @@ async def test_reports_button_then_today_callback(dp, tmp_path, monkeypatch):
     assert any("• Іваненко Петро — 💊 хвороба" in text for _, text in session.edited_messages)
 
 
+async def test_broadcast_single_recipient_via_dispatcher(dp, tmp_path):
+    session = _FakeSession()
+    storage = Storage(tmp_path)
+    await storage.upsert_member(111, "Лід Групи", "lead", status=MEMBER_APPROVED)
+    await storage.add_role(111, "group_lead")
+    await storage.upsert_member(222, "Іваненко Петро", "ivan", status=MEMBER_APPROVED)
+    await storage.upsert_member(333, "Бондар Оля", "olya", status=MEMBER_APPROVED)
+    bot = _make_bot(dp, storage, session)
+
+    await dp.feed_update(bot, _message_update(1, texts.MENU_BROADCAST, _user(111)))
+    await dp.feed_update(bot, _callback_update(2, "br:222", _user(111)))
+    await dp.feed_update(bot, _callback_update(3, "bc:next", _user(111)))
+    await dp.feed_update(bot, _callback_update(4, "bm:test", _user(111)))
+    await dp.feed_update(bot, _callback_update(5, "c:send", _user(111)))
+
+    assert (222, texts.BROADCAST_TEXT) in session.sent_messages
+    assert (111, texts.BROADCAST_TEXT) not in session.sent_messages
+    assert (333, texts.BROADCAST_TEXT) not in session.sent_messages
+
+
+async def test_broadcast_all_recipients_via_dispatcher(dp, tmp_path):
+    session = _FakeSession()
+    storage = Storage(tmp_path)
+    await storage.upsert_member(111, "Лід Групи", "lead", status=MEMBER_APPROVED)
+    await storage.add_role(111, "group_lead")
+    await storage.upsert_member(222, "Іваненко Петро", "ivan", status=MEMBER_APPROVED)
+    await storage.upsert_member(333, "Бондар Оля", "olya", status=MEMBER_APPROVED)
+    bot = _make_bot(dp, storage, session)
+
+    await dp.feed_update(bot, _message_update(1, texts.MENU_BROADCAST, _user(111)))
+    await dp.feed_update(bot, _callback_update(2, "bc:all", _user(111)))
+    await dp.feed_update(bot, _callback_update(3, "bc:next", _user(111)))
+    await dp.feed_update(bot, _callback_update(4, "bm:test", _user(111)))
+    await dp.feed_update(bot, _callback_update(5, "c:send", _user(111)))
+
+    assert (222, texts.BROADCAST_TEXT) in session.sent_messages
+    assert (333, texts.BROADCAST_TEXT) in session.sent_messages
+    assert (111, texts.BROADCAST_TEXT) not in session.sent_messages
+
+
+async def test_broadcast_message_hint_on_plain_text_and_flow_continues(dp, tmp_path):
+    session = _FakeSession()
+    storage = Storage(tmp_path)
+    await storage.upsert_member(111, "Лід Групи", "lead", status=MEMBER_APPROVED)
+    await storage.add_role(111, "group_lead")
+    await storage.upsert_member(222, "Іваненко Петро", "ivan", status=MEMBER_APPROVED)
+    bot = _make_bot(dp, storage, session)
+
+    await dp.feed_update(bot, _message_update(1, texts.MENU_BROADCAST, _user(111)))
+    await dp.feed_update(bot, _callback_update(2, "br:222", _user(111)))
+    await dp.feed_update(bot, _callback_update(3, "bc:next", _user(111)))
+    await dp.feed_update(bot, _message_update(4, "випадковий текст", _user(111)))
+
+    assert (
+        111,
+        f"{texts.BROADCAST_MSG_HINT}\n\n{texts.BROADCAST_MSG_PROMPT}",
+    ) in session.sent_messages
+
+    # The flow survived the stray text: a message can still be chosen and sent.
+    await dp.feed_update(bot, _callback_update(5, "bm:test", _user(111)))
+    await dp.feed_update(bot, _callback_update(6, "c:send", _user(111)))
+    assert (222, texts.BROADCAST_TEXT) in session.sent_messages
+
+
+async def test_broadcast_double_send_delivers_once_and_stales(dp, tmp_path):
+    session = _FakeSession()
+    storage = Storage(tmp_path)
+    await storage.upsert_member(111, "Лід Групи", "lead", status=MEMBER_APPROVED)
+    await storage.add_role(111, "group_lead")
+    await storage.upsert_member(222, "Іваненко Петро", "ivan", status=MEMBER_APPROVED)
+    await storage.upsert_member(333, "Бондар Оля", "olya", status=MEMBER_APPROVED)
+    bot = _make_bot(dp, storage, session)
+
+    await dp.feed_update(bot, _message_update(1, texts.MENU_BROADCAST, _user(111)))
+    await dp.feed_update(bot, _callback_update(2, "br:222", _user(111)))
+    await dp.feed_update(bot, _callback_update(3, "bc:next", _user(111)))
+    await dp.feed_update(bot, _callback_update(4, "bm:test", _user(111)))
+    await dp.feed_update(bot, _callback_update(5, "c:send", _user(111)))
+    # First send cleared FSM; this tap misses BroadcastForm.confirm → absence stale_callback.
+    await dp.feed_update(bot, _callback_update(6, "c:send", _user(111)))
+
+    broadcasts = [
+        item for item in session.sent_messages if item[1] == texts.BROADCAST_TEXT
+    ]
+    assert broadcasts == [(222, texts.BROADCAST_TEXT)]
+    assert (texts.STALE_CALLBACK, True) in session.answered_callbacks
+
+
+async def test_cancel_during_broadcast_custom_text_clears_flow(dp, tmp_path):
+    session = _FakeSession()
+    storage = Storage(tmp_path)
+    await storage.upsert_member(111, "Лід Групи", "lead", status=MEMBER_APPROVED)
+    await storage.add_role(111, "group_lead")
+    await storage.upsert_member(222, "Іваненко Петро", "ivan", status=MEMBER_APPROVED)
+    bot = _make_bot(dp, storage, session)
+
+    await dp.feed_update(bot, _message_update(1, texts.MENU_BROADCAST, _user(111)))
+    await dp.feed_update(bot, _callback_update(2, "br:222", _user(111)))
+    await dp.feed_update(bot, _callback_update(3, "bc:next", _user(111)))
+    await dp.feed_update(bot, _callback_update(4, "bm:custom", _user(111)))
+
+    await dp.feed_update(bot, _message_update(5, "/cancel", _user(111)))
+    assert (111, texts.CANCELLED) in session.sent_messages
+
+    # The custom-text state is gone: a later plain text is not taken as the message.
+    await dp.feed_update(bot, _message_update(6, "Привіт усім", _user(111)))
+    assert (222, texts.BROADCAST_TEXT) not in session.sent_messages
+    assert not any(
+        chat_id == 111 and texts.BROADCAST_CONFIRM_QUESTION in text
+        for chat_id, text in session.sent_messages
+    )
+
+
 async def test_foreign_callback_reaches_stale_handler(dp, tmp_path):
     session = _FakeSession()
     storage = Storage(tmp_path)

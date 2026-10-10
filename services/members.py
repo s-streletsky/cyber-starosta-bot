@@ -110,12 +110,23 @@ def can_mark_absence(member: dict | None, is_admin: bool) -> bool:
 
 
 def can_view_reports(member: dict | None, is_admin: bool) -> bool:
-    """Who may open reports/selections: env admin, group_lead or supervisor."""
+    """Who may open reports/selections: env admin, group_lead or supervisor.
+
+    Role predicates such as this one assume an already-admitted (approved)
+    member: AccessControlMiddleware is the approval gate, and approval-awareness
+    lives only in predicates used to build selectable lists before admission
+    (e.g. is_active_group_lead).
+    """
     if is_admin:
         return True
     if not isinstance(member, dict):
         return False
     return has_role(member, ROLE_GROUP_LEAD) or has_role(member, ROLE_SUPERVISOR)
+
+
+def can_send_notifications(member: dict | None, is_admin: bool) -> bool:
+    """Who may broadcast a notification: delegated to can_view_reports for now."""
+    return can_view_reports(member, is_admin)
 
 
 def role_name(role: str) -> str:

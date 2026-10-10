@@ -3,7 +3,7 @@
 import logging
 from unittest.mock import AsyncMock
 
-from handlers.notify import notify_safe
+from handlers.notify import notify_many, notify_safe
 from storage import Storage
 
 
@@ -28,3 +28,26 @@ async def test_notify_safe_swallows_send_failure(tmp_path, caplog):
         await notify_safe(bot, storage, 111, "hello")
 
     assert any(record.levelno == logging.WARNING for record in caplog.records)
+
+
+async def test_notify_many_counts_delivered_and_failed(tmp_path, caplog):
+    storage = Storage(tmp_path)
+    bot = AsyncMock()
+    bot.send_message = AsyncMock(side_effect=[None, RuntimeError("boom")])
+    bot.get_chat = AsyncMock(side_effect=RuntimeError("no chat"))
+
+    with caplog.at_level(logging.WARNING, logger="handlers.notify"):
+        delivered, failed = await notify_many(bot, storage, [111, 222], "hi", context="broadcast")
+
+    assert (delivered, failed) == (1, 1)
+    assert any(record.levelno == logging.WARNING for record in caplog.records)
+
+
+async def test_notify_many_all_delivered(tmp_path):
+    storage = Storage(tmp_path)
+    bot = AsyncMock()
+
+    delivered, failed = await notify_many(bot, storage, [111, 222, 333], "hi")
+
+    assert (delivered, failed) == (3, 0)
+    assert bot.send_message.call_count == 3
